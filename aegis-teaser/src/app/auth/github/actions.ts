@@ -106,6 +106,7 @@ export async function analyzeGitHubRepo(repoFullName: string) {
     if (filePaths.some((p: string) => p.includes('actions/'))) detected.add('Server Actions Communication Pattern')
     if (filePaths.some((p: string) => p.includes('middleware.ts'))) detected.add('Edge Security Middleware')
     if (filePaths.some((p: string) => p.includes('.github/workflows'))) detected.add('GitHub Actions CI/CD Pipeline')
+    if (filePaths.some((p: string) => p.includes('utils/supabase'))) detected.add('Supabase Infrastructure Layer')
 
     // 5. Language Stats
     const langRes = await fetch(`https://api.github.com/repos/${repoFullName}/languages`, { headers })
@@ -114,8 +115,11 @@ export async function analyzeGitHubRepo(repoFullName: string) {
       if (l !== 'CSS' && l !== 'HTML') detected.add(l)
     })
 
-    // Deduplicate and filter
-    const finalStack = Array.from(detected)
+    // 6. Intelligent Deduplication
+    let finalStack = Array.from(detected)
+    if (finalStack.includes('Strict TypeScript Architecture')) {
+      finalStack = finalStack.filter(s => s !== 'TypeScript')
+    }
 
     return { 
       stack: finalStack,
