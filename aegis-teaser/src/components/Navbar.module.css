@@ -5,69 +5,64 @@
   right: 0;
   z-index: 100;
   padding: 24px 0;
-  transition: all 0.4s ease;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   background: transparent;
 }
 
 .navbar.scrolled {
-  padding: 16px 0;
-  background: rgba(3, 0, 0, 0.85);
+  padding: 12px 0;
+  background: rgba(3, 0, 0, 0.7);
   backdrop-filter: blur(20px);
-  border-bottom: 1px solid rgba(255, 0, 0, 0.1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .inner {
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
-  padding: 0 24px;
+  padding: 0 40px;
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
 
+.left { flex: 1; }
+
 .logo {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   text-decoration: none;
 }
 
 .logoIcon {
-  width: 32px;
-  height: 32px;
-  background: #ff0000;
-  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: transform 0.3s ease;
-  box-shadow: 0 0 15px rgba(255, 0, 0, 0.4);
 }
-
-.logo:hover .logoIcon { transform: scale(1.05); }
 
 .logoText {
   font-family: var(--font-heading);
-  font-size: 18px;
-  font-weight: 800;
+  font-size: 22px;
+  font-weight: 700;
   color: #ffffff;
-  letter-spacing: 1px;
+  letter-spacing: -0.5px;
 }
 
 .navLinks {
   display: flex;
-  gap: 8px;
+  gap: 32px;
   list-style: none;
+  flex: 2;
+  justify-content: center;
 }
 
 .navLinks a {
-  padding: 8px 16px;
   color: rgba(255, 255, 255, 0.6);
   text-decoration: none;
   font-size: 14px;
   font-weight: 500;
   font-family: var(--font-poppins);
-  transition: color 0.2s ease;
+  transition: color 0.3s ease;
 }
 
 .navLinks a:hover {
@@ -75,8 +70,26 @@
 }
 
 .navActions {
+  flex: 1;
   display: flex;
-  align-items: center;
-  gap: 12px;
+  justify-content: flex-end;
+}
+
+.loginBtn {
+  padding: 10px 24px;
+  background: #ffffff;
+  color: #000000;
+  border-radius: 999px;
+  font-family: var(--font-poppins);
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.3s ease;
+}
+
+.loginBtn:hover {
+  background: rgba(255, 255, 255, 0.9);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(255, 255, 255, 0.1);
 }
 

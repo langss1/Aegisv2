@@ -10,15 +10,34 @@ import ForWhoSection from '@/components/ForWhoSection'
 import TestimonialsSection from '@/components/TestimonialsSection'
 import CTASection from '@/components/CTASection'
 import Footer from '@/components/Footer'
+import IconRibbonSection from '@/components/IconRibbonSection'
 
 import { useState, useEffect } from 'react'
 const ParticleField = nextDynamic(() => import('@/components/ParticleField'), { ssr: false })
 
 export default function Home() {
   const [isRevealed, setIsRevealed] = useState(false)
+  const [mousePos, setMousePos] = useState({ x: -100, y: -100 })
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      setMousePos({ x: e.clientX, y: e.clientY })
+    }
+    window.addEventListener('mousemove', handleMouseMove)
+    return () => window.removeEventListener('mousemove', handleMouseMove)
+  }, [])
 
   return (
     <main className={styles.main}>
+      <div 
+        className="custom-cursor-glow" 
+        style={{ left: mousePos.x, top: mousePos.y }} 
+      />
+      <div 
+        className="custom-cursor" 
+        style={{ left: mousePos.x, top: mousePos.y }} 
+      />
+
       <ParticleField />
       <div className={styles.gridBg} />
       <Navbar />
@@ -27,6 +46,7 @@ export default function Home() {
       {isRevealed && (
         <div className={styles.revealContainer}>
           <DemoSection />
+          <IconRibbonSection />
           <WhyAegisSection />
           <ForWhoSection />
           <TestimonialsSection />

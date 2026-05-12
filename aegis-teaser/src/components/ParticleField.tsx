@@ -25,20 +25,31 @@ export default function ParticleField() {
       constructor() {
         this.x = Math.random() * (canvas?.width || 1200)
         this.y = Math.random() * (canvas?.height || 800)
-        this.vx = (Math.random() - 0.5) * 0.4
-        this.vy = (Math.random() - 0.5) * 0.4 - 0.1
+        this.vx = (Math.random() - 0.5) * 0.2
+        this.vy = (Math.random() - 0.5) * 0.2
         this.life = 0
-        this.maxLife = 200 + Math.random() * 300
-        this.size = Math.random() * 2 + 0.5
-        const colors = ['rgba(220,38,38,', 'rgba(239,68,68,', 'rgba(244,63,94,', 'rgba(248,113,113,']
+        this.maxLife = 400 + Math.random() * 600
+        this.size = Math.random() * 1.5 + 0.5
+        // Red gradient palette
+        const colors = ['rgba(255, 0, 0,', 'rgba(153, 27, 27,', 'rgba(220, 38, 38,', 'rgba(127, 29, 29,']
         this.color = colors[Math.floor(Math.random() * colors.length)]
       }
       update() {
-        this.x += this.vx; this.y += this.vy; this.life++
+        this.x += this.vx
+        this.y += this.vy
+        this.life++
+        
+        // Wrap around screen
+        if (canvas) {
+            if (this.x < 0) this.x = canvas.width
+            if (this.x > canvas.width) this.x = 0
+            if (this.y < 0) this.y = canvas.height
+            if (this.y > canvas.height) this.y = 0
+        }
       }
       draw() {
         if (!ctx) return
-        const alpha = Math.sin((this.life / this.maxLife) * Math.PI) * 0.5
+        const alpha = Math.sin((this.life / this.maxLife) * Math.PI) * 0.3
         ctx.beginPath()
         ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2)
         ctx.fillStyle = `${this.color}${alpha})`
@@ -47,41 +58,32 @@ export default function ParticleField() {
       isDead() { return this.life >= this.maxLife }
     }
 
-    // Connections
-    function drawConnections() {
-      if (!ctx) return
-      for (let i = 0; i < particles.length; i++) {
-        for (let j = i + 1; j < particles.length; j++) {
-          const dx = particles[i].x - particles[j].x
-          const dy = particles[i].y - particles[j].y
-          const dist = Math.sqrt(dx * dx + dy * dy)
-          if (dist < 120) {
-            const alpha = (1 - dist / 120) * 0.12
-            ctx.beginPath()
-            ctx.moveTo(particles[i].x, particles[i].y)
-            ctx.lineTo(particles[j].x, particles[j].y)
-            ctx.strokeStyle = `rgba(220, 38, 38, ${alpha})`
-            ctx.lineWidth = 0.5
-            ctx.stroke()
-          }
-        }
-      }
-    }
-
     function animate() {
       if (!canvas || !ctx) return
       ctx.clearRect(0, 0, canvas.width, canvas.height)
-      if (particles.length < 80) particles.push(new Particle())
-      particles = particles.filter(p => !p.isDead())
-      drawConnections()
-      particles.forEach(p => { p.update(); p.draw() })
+      
+      if (particles.length < 150) {
+        particles.push(new Particle())
+      }
+      
+      particles.forEach((p, index) => {
+        p.update()
+        p.draw()
+        if (p.isDead()) {
+           particles[index] = new Particle()
+        }
+      })
+      
       animId = requestAnimationFrame(animate)
     }
 
     resize()
     window.addEventListener('resize', resize)
     animate()
-    return () => { cancelAnimationFrame(animId); window.removeEventListener('resize', resize) }
+    return () => { 
+        cancelAnimationFrame(animId)
+        window.removeEventListener('resize', resize)
+    }
   }, [])
 
   return <canvas ref={canvasRef} className={styles.canvas} />
