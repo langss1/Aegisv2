@@ -11,416 +11,535 @@ interface ScanContext {
   projectId?: string
 }
 
+type SetupMode = 'choose' | 'manual' | 'auto-pr' | 'monitoring'
+
 export default function Phase3Page() {
-  const [traffic, setTraffic] = useState<{id: number, msg: string, isAttack: boolean}[]>([])
-  const [automationLog, setAutomationLog] = useState<{id: number, msg: string}[]>([])
-  const [notifications, setNotifications] = useState<{id: number, msg: string}[]>([])
+  const [setupMode, setSetupMode] = useState<SetupMode>('choose')
   const [scanContext, setScanContext] = useState<ScanContext | null>(null)
-  const [phase1Findings, setPhase1Findings] = useState<any[]>([])
-  const [pentestResults, setPentestResults] = useState<any[]>([])
-  const [approvalStatus, setApprovalStatus] = useState<'pending' | 'approved' | 'rejected' | 'waiting'>('waiting')
-  const [sessionId, setSessionId] = useState<string>('')
-  const [showApprovalModal, setShowApprovalModal] = useState(false)
+  const [fixResults, setFixResults] = useState<any>(null)
+  
+  // API Key & Config
+  const [projectId] = useState(`aegis_${Date.now().toString(36)}`)
+  const [apiKey] = useState(`aegis_key_${Math.random().toString(36).substr(2, 24)}`)
+  const [copied, setCopied] = useState<string | null>(null)
+  
+  // Auto PR state
+  const [githubToken, setGithubToken] = useState('')
+  const [prStatus, setPrStatus] = useState<'idle' | 'creating' | 'success' | 'error'>('idle')
+  const [prUrl, setPrUrl] = useState('')
+  const [prError, setPrError] = useState('')
+  
+  // Monitoring state
+  const [traffic, setTraffic] = useState<{id: number, msg: string, isAttack: boolean, type?: string}[]>([])
+  const [stats, setStats] = useState({ requests: 0, blocked: 0, passed: 0 })
   const terminalRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
 
   useEffect(() => {
-    // Load context and results
     const contextStr = localStorage.getItem('aegis_scan_context')
-    const findingsStr = localStorage.getItem('aegis_scan_findings')
-    const pentestStr = localStorage.getItem('aegis_pentest_results')
-    const storedSessionId = localStorage.getItem('aegis_session_id')
+    const fixStr = localStorage.getItem('aegis_fix_results')
     
     if (contextStr) setScanContext(JSON.parse(contextStr))
-    if (findingsStr) setPhase1Findings(JSON.parse(findingsStr))
-    if (pentestStr) setPentestResults(JSON.parse(pentestStr))
-    if (storedSessionId) setSessionId(storedSessionId)
-
-    // Start monitoring simulation
-    startMonitoring()
-    
-    // Send Phase 3 completion notification after a delay
-    setTimeout(() => {
-      sendApprovalRequest()
-    }, 5000)
+    if (fixStr) setFixResults(JSON.parse(fixStr))
   }, [])
 
-  const sendApprovalRequest = async () => {
-    const contextStr = localStorage.getItem('aegis_scan_context')
-    const findingsStr = localStorage.getItem('aegis_scan_findings')
-    const pentestStr = localStorage.getItem('aegis_pentest_results')
-    const storedSessionId = localStorage.getItem('aegis_session_id') || `session_${Date.now()}`
-    
-    const context = contextStr ? JSON.parse(contextStr) : null
-    const findings = findingsStr ? JSON.parse(findingsStr) : []
-    const pentest = pentestStr ? JSON.parse(pentestStr) : []
-    
-    setApprovalStatus('pending')
-    setShowApprovalModal(true)
-    
-    // Send Telegram notification with approval buttons
+  const copyToClipboard = (text: string, key: string) => {
+    navigator.clipboard.writeText(text)
+    setCopied(key)
+    setTimeout(() => setCopied(null), 2000)
+  }
+
+  const handleCreatePR = async () => {
+    if (!githubToken.trim() || !scanContext?.repoUrl) {
+      setPrError('GitHub token and repo URL required')
+      return
+    }
+
+    setPrStatus('creating')
+    setPrError('')
+
     try {
-      await fetch('/api/telegram/notify', {
+      const response = await fetch('/api/github/pr', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          type: 'phase3_complete',
-          projectName: context?.repoName || 'Unknown Project',
-          repoUrl: context?.repoUrl,
-          sessionId: storedSessionId,
-          summary: {
-            phase1: findings.length,
-            phase2: pentest.filter((p: any) => p.status === 'vulnerable').length,
-            fixed: findings.filter((f: any) => f.patched).length
-          }
+          action: 'create-pr',
+          repoUrl: scanContext.repoUrl,
+          accessToken: githubToken,
+          framework: 'nextjs'
         })
       })
-      
-      // Add to automation log
-      setAutomationLog(prev => [{
-        id: Date.now(),
-        msg: '<b>Approval Request Sent:</b> Waiting for human confirmation via Telegram...'
-      }, ...prev])
-      
-      // Poll for approval status
-      pollApprovalStatus(storedSessionId)
-    } catch (e) {
-      console.log('Telegram notification skipped')
-      // Show local approval modal instead
-    }
-  }
 
-  const pollApprovalStatus = async (sid: string) => {
-    const checkStatus = async () => {
-      try {
-        const response = await fetch(`/api/telegram/webhook?sessionId=${sid}`)
-        const data = await response.json()
+      const data = await response.json()
+
+      if (data.success) {
+        setPrStatus('success')
+        setPrUrl(data.pr.url)
         
-        if (data.status === 'approved') {
-          setApprovalStatus('approved')
-          handlePushToRepo()
-          return true
-        } else if (data.status === 'rejected') {
-          setApprovalStatus('rejected')
-          setAutomationLog(prev => [{
-            id: Date.now(),
-            msg: '<b>Deployment Rejected:</b> Changes will not be pushed to repository.'
-          }, ...prev])
-          return true
-        }
-        return false
-      } catch (e) {
-        return false
+        // Auto transition to monitoring after 3 seconds
+        setTimeout(() => {
+          setSetupMode('monitoring')
+          startMonitoring()
+        }, 3000)
+      } else {
+        throw new Error(data.error || 'Failed to create PR')
       }
+    } catch (error: any) {
+      setPrStatus('error')
+      setPrError(error.message)
     }
-    
-    // Poll every 3 seconds for up to 5 minutes
-    let attempts = 0
-    const maxAttempts = 100
-    const pollInterval = setInterval(async () => {
-      attempts++
-      const done = await checkStatus()
-      if (done || attempts >= maxAttempts) {
-        clearInterval(pollInterval)
-      }
-    }, 3000)
-  }
-
-  const handleLocalApprove = () => {
-    setApprovalStatus('approved')
-    setShowApprovalModal(false)
-    handlePushToRepo()
-  }
-
-  const handleLocalReject = () => {
-    setApprovalStatus('rejected')
-    setShowApprovalModal(false)
-    setAutomationLog(prev => [{
-      id: Date.now(),
-      msg: '<b>Deployment Rejected:</b> Changes will not be pushed to repository.'
-    }, ...prev])
-  }
-
-  const handlePushToRepo = async () => {
-    setAutomationLog(prev => [{
-      id: Date.now(),
-      msg: '<b>Pushing Changes:</b> Committing security patches to repository...'
-    }, ...prev])
-    
-    // Simulate push process
-    await new Promise(r => setTimeout(r, 2000))
-    
-    setAutomationLog(prev => [{
-      id: Date.now(),
-      msg: '<b>Success:</b> All security patches have been pushed to the repository!'
-    }, ...prev])
-    
-    // Send success notification
-    const telMsg = { id: Date.now(), msg: '✅ Security patches pushed to repository!' }
-    setNotifications(prev => [telMsg, ...prev])
-    setTimeout(() => setNotifications(prev => prev.filter(n => n.id !== telMsg.id)), 5000)
   }
 
   const startMonitoring = () => {
-    const paths = ['/api/v1/auth', '/dashboard/settings', '/api/v1/users/42', '/search?q=admin', '/profile/edit', '/api/v1/checkout']
+    const attackTypes = ['SQL_INJECTION', 'XSS', 'CSRF', 'PATH_TRAVERSAL', 'RATE_LIMIT']
+    const paths = ['/api/auth', '/api/users', '/dashboard', '/admin', '/search', '/api/checkout']
     
     const interval = setInterval(() => {
-      const isAttack = Math.random() > 0.85
-      const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+      const isAttack = Math.random() > 0.8
       const path = paths[Math.floor(Math.random() * paths.length)]
+      const attackType = attackTypes[Math.floor(Math.random() * attackTypes.length)]
       
-      const logMsg = isAttack 
-        ? `[ALERT] WAF_BLOCK: Malicious pattern detected on ${path}. Request rejected.`
-        : `[INFO] TRAFFIC_PASS: Standard GET request to ${path} validated.`
-
-      const newLog = { id: Date.now(), msg: logMsg, isAttack }
-      
-      setTraffic(prev => [...prev.slice(-49), newLog])
-
-      if (isAttack) {
-        const reason = Math.random() > 0.5 ? 'SQL_INJECTION' : 'XSS_FILTER_MATCH'
-        setAutomationLog(prev => [{
-          id: Date.now(),
-          msg: `<b>Incident Resolved:</b> ${reason} attempt blocked on ${path}. IP has been temporary blacklisted.`
-        }, ...prev.slice(0, 10)])
+      const newLog = {
+        id: Date.now(),
+        msg: isAttack 
+          ? `[BLOCKED] ${attackType} attempt on ${path} - Request rejected`
+          : `[PASS] GET ${path} - 200 OK`,
+        isAttack,
+        type: isAttack ? attackType : undefined
       }
+      
+      setTraffic(prev => [...prev.slice(-30), newLog])
+      setStats(prev => ({
+        requests: prev.requests + 1,
+        blocked: prev.blocked + (isAttack ? 1 : 0),
+        passed: prev.passed + (isAttack ? 0 : 1)
+      }))
 
       if (terminalRef.current) {
         terminalRef.current.scrollTop = terminalRef.current.scrollHeight
       }
-    }, 1500)
+    }, 1200)
     
     return () => clearInterval(interval)
   }
 
-  const getSummaryStats = () => {
-    const phase1Count = phase1Findings.length
-    const phase2Count = pentestResults.filter((p: any) => p.status === 'vulnerable').length
-    const fixedCount = phase1Findings.filter((f: any) => f.patched).length
-    
-    return { phase1Count, phase2Count, fixedCount, total: phase1Count + phase2Count }
+  const handleStartMonitoring = () => {
+    setSetupMode('monitoring')
+    startMonitoring()
   }
 
-  const stats = getSummaryStats()
+  // SDK Code snippets
+  const installCommand = 'npm install @aegis/protect'
+  
+  const middlewareCode = `// middleware.ts
+import { aegisMiddleware } from '@aegis/protect'
+
+export const middleware = aegisMiddleware({
+  projectId: '${projectId}',
+  apiKey: process.env.AEGIS_API_KEY,
+  rules: ['sql-injection', 'xss', 'csrf', 'ratelimit']
+})
+
+export const config = {
+  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)']
+}`
+
+  const envCode = `# .env.local
+AEGIS_API_KEY=${apiKey}
+AEGIS_PROJECT_ID=${projectId}`
 
   return (
     <div className={styles.content}>
-      {/* Approval Modal */}
-      <AnimatePresence>
-        {showApprovalModal && approvalStatus === 'pending' && (
+      <AnimatePresence mode="wait">
+        {/* Step 1: Choose Setup Method */}
+        {setupMode === 'choose' && (
           <motion.div
+            key="choose"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className={styles.setupContainer}
+          >
+            <div className={styles.setupHeader}>
+              <div className={styles.phaseIcon}>🛡️</div>
+              <h1>Phase 3: Real-Time Protection</h1>
+              <p>Enable AEGIS SDK to monitor and block attacks in real-time</p>
+            </div>
+
+            {/* Summary from previous phases */}
+            {fixResults && (
+              <div className={styles.summaryBox}>
+                <div className={styles.summaryItem}>
+                  <span className={styles.summaryLabel}>Vulnerabilities Found</span>
+                  <span className={styles.summaryValue}>{fixResults.totalVulnerabilities || 0}</span>
+                </div>
+                <div className={styles.summaryItem}>
+                  <span className={styles.summaryLabel}>Fixed</span>
+                  <span className={styles.summaryValueGreen}>{fixResults.fixed || 0}</span>
+                </div>
+                <div className={styles.summaryItem}>
+                  <span className={styles.summaryLabel}>Repository</span>
+                  <span className={styles.summaryValueSmall}>{scanContext?.repoName || 'Unknown'}</span>
+                </div>
+              </div>
+            )}
+
+            <h2 className={styles.chooseTitle}>Choose Setup Method</h2>
+
+            <div className={styles.optionsGrid}>
+              {/* Option 1: Manual Install */}
+              <motion.div 
+                className={styles.optionCard}
+                whileHover={{ scale: 1.02 }}
+                onClick={() => setSetupMode('manual')}
+              >
+                <div className={styles.optionIcon}>📋</div>
+                <h3>Manual Install</h3>
+                <p>Copy commands and add SDK to your project manually</p>
+                <ul className={styles.optionFeatures}>
+                  <li>Full control over installation</li>
+                  <li>Works with any deployment</li>
+                  <li>Step-by-step instructions</li>
+                </ul>
+                <button className={styles.optionBtn}>
+                  Show Instructions →
+                </button>
+              </motion.div>
+
+              {/* Option 2: Auto PR */}
+              <motion.div 
+                className={styles.optionCard + ' ' + styles.optionCardHighlight}
+                whileHover={{ scale: 1.02 }}
+                onClick={() => setSetupMode('auto-pr')}
+              >
+                <div className={styles.optionBadge}>Recommended</div>
+                <div className={styles.optionIcon}>🤖</div>
+                <h3>Auto Pull Request</h3>
+                <p>AEGIS creates a PR with SDK already configured</p>
+                <ul className={styles.optionFeatures}>
+                  <li>One-click setup</li>
+                  <li>Auto-configured middleware</li>
+                  <li>Just review & merge</li>
+                </ul>
+                <button className={styles.optionBtnPrimary}>
+                  Create PR Automatically →
+                </button>
+              </motion.div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Step 2a: Manual Install Instructions */}
+        {setupMode === 'manual' && (
+          <motion.div
+            key="manual"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className={styles.setupContainer}
+          >
+            <button className={styles.backBtn} onClick={() => setSetupMode('choose')}>
+              ← Back to options
+            </button>
+
+            <div className={styles.setupHeader}>
+              <div className={styles.phaseIcon}>📋</div>
+              <h1>Manual Installation</h1>
+              <p>Follow these steps to add AEGIS protection to your app</p>
+            </div>
+
+            {/* Your API Key */}
+            <div className={styles.apiKeyBox}>
+              <div className={styles.apiKeyLabel}>Your API Key</div>
+              <div className={styles.apiKeyValue}>
+                <code>{apiKey}</code>
+                <button 
+                  onClick={() => copyToClipboard(apiKey, 'apikey')}
+                  className={styles.copyBtn}
+                >
+                  {copied === 'apikey' ? '✓' : 'Copy'}
+                </button>
+              </div>
+            </div>
+
+            {/* Step 1: Install */}
+            <div className={styles.stepCard}>
+              <div className={styles.stepNumber}>1</div>
+              <div className={styles.stepContent}>
+                <h3>Install AEGIS SDK</h3>
+                <div className={styles.codeBlock}>
+                  <code>{installCommand}</code>
+                  <button 
+                    onClick={() => copyToClipboard(installCommand, 'install')}
+                    className={styles.copyBtn}
+                  >
+                    {copied === 'install' ? '✓' : 'Copy'}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Step 2: Add Middleware */}
+            <div className={styles.stepCard}>
+              <div className={styles.stepNumber}>2</div>
+              <div className={styles.stepContent}>
+                <h3>Add Middleware</h3>
+                <p>Create <code>middleware.ts</code> in your project root:</p>
+                <div className={styles.codeBlockLarge}>
+                  <pre>{middlewareCode}</pre>
+                  <button 
+                    onClick={() => copyToClipboard(middlewareCode, 'middleware')}
+                    className={styles.copyBtn}
+                  >
+                    {copied === 'middleware' ? '✓' : 'Copy'}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Step 3: Add ENV */}
+            <div className={styles.stepCard}>
+              <div className={styles.stepNumber}>3</div>
+              <div className={styles.stepContent}>
+                <h3>Add Environment Variables</h3>
+                <p>Add to your <code>.env.local</code>:</p>
+                <div className={styles.codeBlock}>
+                  <pre>{envCode}</pre>
+                  <button 
+                    onClick={() => copyToClipboard(envCode, 'env')}
+                    className={styles.copyBtn}
+                  >
+                    {copied === 'env' ? '✓' : 'Copy'}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Step 4: Deploy */}
+            <div className={styles.stepCard}>
+              <div className={styles.stepNumber}>4</div>
+              <div className={styles.stepContent}>
+                <h3>Deploy & Monitor</h3>
+                <p>Deploy your app and AEGIS will start monitoring attacks!</p>
+              </div>
+            </div>
+
+            <button 
+              onClick={handleStartMonitoring}
+              className={styles.primaryBtn}
+            >
+              I've Added the SDK - Start Monitoring →
+            </button>
+          </motion.div>
+        )}
+
+        {/* Step 2b: Auto PR */}
+        {setupMode === 'auto-pr' && (
+          <motion.div
+            key="auto-pr"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className={styles.setupContainer}
+          >
+            <button className={styles.backBtn} onClick={() => setSetupMode('choose')}>
+              ← Back to options
+            </button>
+
+            <div className={styles.setupHeader}>
+              <div className={styles.phaseIcon}>🤖</div>
+              <h1>Auto Pull Request</h1>
+              <p>AEGIS will create a PR with protection already configured</p>
+            </div>
+
+            {prStatus === 'idle' && (
+              <>
+                <div className={styles.prInfoBox}>
+                  <h3>What will be added:</h3>
+                  <ul>
+                    <li><code>middleware.ts</code> - AEGIS protection middleware</li>
+                    <li>Pre-configured security rules</li>
+                    <li>Environment variable template</li>
+                  </ul>
+                </div>
+
+                <div className={styles.inputGroup}>
+                  <label>GitHub Personal Access Token</label>
+                  <p className={styles.inputHint}>
+                    Need a token? <a href="https://github.com/settings/tokens/new?scopes=repo" target="_blank" rel="noopener noreferrer">Create one here</a> with <code>repo</code> scope
+                  </p>
+                  <input
+                    type="password"
+                    value={githubToken}
+                    onChange={(e) => setGithubToken(e.target.value)}
+                    placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
+                    className={styles.input}
+                  />
+                </div>
+
+                <div className={styles.repoInfo}>
+                  <span>Repository:</span>
+                  <code>{scanContext?.repoUrl || 'Not specified'}</code>
+                </div>
+
+                {prError && (
+                  <div className={styles.errorBox}>{prError}</div>
+                )}
+
+                <button 
+                  onClick={handleCreatePR}
+                  className={styles.primaryBtn}
+                  disabled={!githubToken.trim()}
+                >
+                  Create Pull Request →
+                </button>
+              </>
+            )}
+
+            {prStatus === 'creating' && (
+              <div className={styles.loadingState}>
+                <div className={styles.spinner}></div>
+                <p>Creating Pull Request...</p>
+                <p className={styles.loadingHint}>Adding middleware and configuration files</p>
+              </div>
+            )}
+
+            {prStatus === 'success' && (
+              <div className={styles.successState}>
+                <div className={styles.successIcon}>✅</div>
+                <h3>Pull Request Created!</h3>
+                <a href={prUrl} target="_blank" rel="noopener noreferrer" className={styles.prLink}>
+                  {prUrl}
+                </a>
+                <p className={styles.successHint}>
+                  Review and merge the PR, then deploy your app.
+                </p>
+                <p className={styles.autoRedirect}>
+                  Redirecting to monitoring dashboard...
+                </p>
+              </div>
+            )}
+
+            {prStatus === 'error' && (
+              <div className={styles.errorState}>
+                <div className={styles.errorIcon}>❌</div>
+                <h3>Failed to Create PR</h3>
+                <p>{prError}</p>
+                <button 
+                  onClick={() => setPrStatus('idle')}
+                  className={styles.secondaryBtn}
+                >
+                  Try Again
+                </button>
+              </div>
+            )}
+          </motion.div>
+        )}
+
+        {/* Step 3: Monitoring Dashboard */}
+        {setupMode === 'monitoring' && (
+          <motion.div
+            key="monitoring"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            style={{
-              position: 'fixed',
-              inset: 0,
-              background: 'rgba(0,0,0,0.8)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              zIndex: 1000
-            }}
+            className={styles.monitoringContainer}
           >
-            <motion.div
-              initial={{ scale: 0.9, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              style={{
-                background: '#0a0a0a',
-                border: '1px solid rgba(220, 38, 38, 0.3)',
-                borderRadius: '24px',
-                padding: '40px',
-                maxWidth: '500px',
-                textAlign: 'center'
-              }}
-            >
-              <div style={{ fontSize: '48px', marginBottom: '20px' }}>🔔</div>
-              <h2 style={{ fontSize: '24px', marginBottom: '12px' }}>Security Pipeline Complete</h2>
-              <p style={{ opacity: 0.6, marginBottom: '24px' }}>
-                All phases completed for <strong>{scanContext?.repoName || 'your project'}</strong>
-              </p>
-              
-              <div style={{ 
-                background: 'rgba(255,255,255,0.05)', 
-                borderRadius: '12px', 
-                padding: '20px',
-                marginBottom: '24px',
-                textAlign: 'left'
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                  <span style={{ opacity: 0.6 }}>Source Code Issues:</span>
-                  <span style={{ fontWeight: 'bold' }}>{stats.phase1Count}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                  <span style={{ opacity: 0.6 }}>Pentest Findings:</span>
-                  <span style={{ fontWeight: 'bold' }}>{stats.phase2Count}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ opacity: 0.6 }}>Patches Applied:</span>
-                  <span style={{ fontWeight: 'bold', color: '#22c55e' }}>{stats.fixedCount}</span>
+            <div className={styles.monitorGrid}>
+              {/* Live Terminal */}
+              <div className={styles.terminalArea}>
+                <div className={styles.terminal}>
+                  <div className={styles.terminalHeader}>
+                    <div className={styles.dots}><span/><span/><span/></div>
+                    <span className={styles.termTitle}>aegis@waf:~# live-monitor</span>
+                    <div className={styles.liveIndicator}>● LIVE</div>
+                  </div>
+                  <div className={styles.terminalBody} ref={terminalRef}>
+                    {traffic.length === 0 && (
+                      <div className={styles.logLine} style={{ opacity: 0.5 }}>
+                        Waiting for traffic...
+                      </div>
+                    )}
+                    {traffic.map(t => (
+                      <div 
+                        key={t.id} 
+                        className={styles.logLine}
+                        style={{ color: t.isAttack ? '#ef4444' : 'rgba(255,255,255,0.6)' }}
+                      >
+                        <span className={styles.timestamp}>
+                          [{new Date(t.id).toLocaleTimeString()}]
+                        </span>
+                        {' '}{t.msg}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
-              
-              <p style={{ opacity: 0.5, fontSize: '13px', marginBottom: '24px' }}>
-                Waiting for Telegram approval... or approve locally below.
-              </p>
-              
-              <div style={{ display: 'flex', gap: '12px' }}>
-                <button 
-                  onClick={handleLocalReject}
-                  style={{
-                    flex: 1,
-                    padding: '14px',
-                    background: 'rgba(255,255,255,0.05)',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                    borderRadius: '12px',
-                    color: '#fff',
-                    cursor: 'pointer',
-                    fontWeight: 'bold'
-                  }}
-                >
-                  Reject
-                </button>
-                <button 
-                  onClick={handleLocalApprove}
-                  style={{
-                    flex: 2,
-                    padding: '14px',
-                    background: 'linear-gradient(135deg, #dc2626, #991b1b)',
-                    border: 'none',
-                    borderRadius: '12px',
-                    color: '#fff',
-                    cursor: 'pointer',
-                    fontWeight: 'bold'
-                  }}
-                >
-                  Approve & Push to Repo
-                </button>
+
+              {/* Stats Dashboard */}
+              <div className={styles.dashboardArea}>
+                <div className={styles.dashboardHeader}>
+                  <h2>🛡️ AEGIS Protection Active</h2>
+                  <p>Project: {projectId}</p>
+                </div>
+
+                <div className={styles.statsGrid}>
+                  <div className={styles.statCard}>
+                    <div className={styles.statValue}>{stats.requests}</div>
+                    <div className={styles.statLabel}>Total Requests</div>
+                  </div>
+                  <div className={styles.statCard + ' ' + styles.statCardDanger}>
+                    <div className={styles.statValue}>{stats.blocked}</div>
+                    <div className={styles.statLabel}>Attacks Blocked</div>
+                  </div>
+                  <div className={styles.statCard + ' ' + styles.statCardSuccess}>
+                    <div className={styles.statValue}>{stats.passed}</div>
+                    <div className={styles.statLabel}>Requests Passed</div>
+                  </div>
+                  <div className={styles.statCard}>
+                    <div className={styles.statValue}>
+                      {stats.requests > 0 
+                        ? Math.round((stats.blocked / stats.requests) * 100) 
+                        : 0}%
+                    </div>
+                    <div className={styles.statLabel}>Block Rate</div>
+                  </div>
+                </div>
+
+                <div className={styles.configCard}>
+                  <h3>Your Configuration</h3>
+                  <div className={styles.configItem}>
+                    <span>Project ID:</span>
+                    <code>{projectId}</code>
+                  </div>
+                  <div className={styles.configItem}>
+                    <span>API Key:</span>
+                    <code>{apiKey.substring(0, 20)}...</code>
+                  </div>
+                  <div className={styles.configItem}>
+                    <span>Rules Active:</span>
+                    <code>SQL, XSS, CSRF, Rate Limit</code>
+                  </div>
+                </div>
+
+                <div className={styles.actionButtons}>
+                  <button 
+                    onClick={() => router.push('/dashboard')}
+                    className={styles.secondaryBtn}
+                  >
+                    Dashboard
+                  </button>
+                  <button 
+                    onClick={() => router.push('/reports')}
+                    className={styles.primaryBtn}
+                  >
+                    View Full Report
+                  </button>
+                </div>
               </div>
-            </motion.div>
+            </div>
           </motion.div>
         )}
-      </AnimatePresence>
-
-      <div className={styles.monitorGrid}>
-        {/* Terminal (Live SIEM) */}
-        <div className={styles.terminalArea}>
-          <div className={styles.terminal}>
-            <div className={styles.terminalHeader}>
-              <div className={styles.dots}><span/><span/><span/></div>
-              <span className={styles.termTitle}>aegis_waf@node-01:~# tail -f /var/log/siem.log</span>
-              <div style={{ color: '#22c55e', fontSize: '10px', fontWeight: 900 }}>● LIVE</div>
-            </div>
-            <div className={styles.terminalBody} ref={terminalRef}>
-              {traffic.map(t => (
-                <div key={t.id} className={styles.logLine} style={{ color: t.isAttack ? '#ef4444' : 'rgba(255,255,255,0.6)' }}>
-                  <span className={styles.timestamp}>[{new Date(t.id).toLocaleTimeString()}]</span> {t.msg}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Dashboard */}
-        <div className={styles.dashboardArea}>
-          <div className={styles.statsGrid}>
-            <div className={styles.statsCard}>
-              <div className={styles.metricLabel}>Total Issues Found</div>
-              <div className={styles.metricValue}>{stats.total}</div>
-            </div>
-            <div className={styles.statsCard}>
-              <div className={styles.metricLabel}>Patches Applied</div>
-              <div className={styles.metricValue} style={{ color: '#22c55e' }}>{stats.fixedCount}</div>
-            </div>
-            <div className={styles.statsCard}>
-              <div className={styles.metricLabel}>Approval Status</div>
-              <div className={styles.metricValue} style={{ 
-                color: approvalStatus === 'approved' ? '#22c55e' : 
-                       approvalStatus === 'rejected' ? '#ef4444' : '#eab308',
-                fontSize: '16px'
-              }}>
-                {approvalStatus === 'waiting' ? 'INITIALIZING' :
-                 approvalStatus === 'pending' ? 'PENDING' :
-                 approvalStatus === 'approved' ? 'APPROVED' : 'REJECTED'}
-              </div>
-            </div>
-            <div className={styles.statsCard}>
-              <div className={styles.metricLabel}>Threats Blocked</div>
-              <div className={styles.metricValue} style={{ color: '#ef4444' }}>
-                {traffic.filter(t => t.isAttack).length}
-              </div>
-            </div>
-          </div>
-
-          <div className={styles.aiCard}>
-            <div className={styles.aiHeader}>
-              <div className={styles.aiIcon}>🧠</div>
-              <h3>AI Automation Log</h3>
-            </div>
-            <div className={styles.aiReasoning}>
-              {automationLog.length === 0 ? (
-                <div className={styles.reasonEntry}>Monitoring active. Waiting for security events...</div>
-              ) : (
-                automationLog.map(log => (
-                  <div key={log.id} className={styles.reasonEntry} dangerouslySetInnerHTML={{ __html: log.msg }} />
-                ))
-              )}
-            </div>
-          </div>
-
-          {/* Action Buttons */}
-          <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
-            <button 
-              onClick={() => router.push('/dashboard')}
-              style={{
-                flex: 1,
-                padding: '14px',
-                background: 'rgba(255,255,255,0.05)',
-                border: '1px solid rgba(255,255,255,0.1)',
-                borderRadius: '12px',
-                color: '#fff',
-                cursor: 'pointer',
-                fontWeight: 'bold'
-              }}
-            >
-              Back to Dashboard
-            </button>
-            <button 
-              onClick={() => router.push('/reports')}
-              style={{
-                flex: 1,
-                padding: '14px',
-                background: 'linear-gradient(135deg, #dc2626, #991b1b)',
-                border: 'none',
-                borderRadius: '12px',
-                color: '#fff',
-                cursor: 'pointer',
-                fontWeight: 'bold'
-              }}
-            >
-              View Full Report
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Telegram Notifications */}
-      <AnimatePresence>
-        {notifications.map(n => (
-          <motion.div 
-            key={n.id}
-            initial={{ opacity: 0, y: 50, scale: 0.8 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.5 }}
-            className={styles.teleOverlay}
-          >
-            <div style={{ fontSize: '20px' }}>✈️</div>
-            <div>
-              <div style={{ fontSize: '10px', fontWeight: 900, opacity: 0.6, textTransform: 'uppercase' }}>Telegram Alert</div>
-              <div style={{ fontSize: '13px', fontWeight: 600 }}>{n.msg}</div>
-            </div>
-          </motion.div>
-        ))}
       </AnimatePresence>
     </div>
   )
