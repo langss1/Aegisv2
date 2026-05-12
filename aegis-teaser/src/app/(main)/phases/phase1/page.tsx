@@ -182,10 +182,27 @@ export default function Phase1Page() {
     ))
   }
 
-  const handlePatchAllAndContinue = () => {
+  const handlePatchAllAndContinue = async () => {
     // Store patched findings
     const patchedFindings = findings.map(f => ({ ...f, patched: true }))
     localStorage.setItem('aegis_scan_findings', JSON.stringify(patchedFindings))
+    
+    // Send Telegram notification for Phase 1 completion
+    try {
+      await fetch('/api/telegram/notify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'phase1_complete',
+          projectName: scanContext?.repoName || 'Unknown Project',
+          findings: findings.length,
+          summary
+        })
+      })
+    } catch (e) {
+      console.log('Telegram notification skipped')
+    }
+    
     router.push('/phases/phase2')
   }
 
