@@ -38,65 +38,78 @@ export async function analyzeGitHubRepo(repoFullName: string) {
   }
 
   try {
-    // 1. Cari package.json secara rekursif (jika di dalam subfolder)
-    const searchRes = await fetch(`https://api.github.com/search/code?q=filename:package.json+repo:${repoFullName}`, {
-      headers: {
-        'Authorization': `Bearer ${session.provider_token}`,
-        'Accept': 'application/vnd.github.v3+json'
-      }
-    })
+    const headers = {
+      'Authorization': `Bearer ${session.provider_token}`,
+      'Accept': 'application/vnd.github.v3+json'
+    }
 
-    let packageContent = null
+    // 1. Ambil Statistik Bahasa (Sangat Detail)
+    const langRes = await fetch(`https://api.github.com/repos/${repoFullName}/languages`, { headers })
+    const languages = langRes.ok ? await langRes.json() : {}
+    const topLanguages = Object.keys(languages).slice(0, 3)
+
+    // 2. Cari manifest files (package.json, Dockerfile, v3nd.json, dll)
+    const searchRes = await fetch(`https://api.github.com/search/code?q=filename:package.json+OR+filename:Dockerfile+OR+filename:docker-compose.yml+OR+filename:vercel.json+repo:${repoFullName}`, { headers })
+    
+    let packageContent: any = null
+    const infraDetails = []
+    
     if (searchRes.ok) {
       const searchData = await searchRes.json()
-      if (searchData.items && searchData.items.length > 0) {
-        // Ambil yang paling utama atau yang pertama ditemukan
-        const fileUrl = searchData.items[0].url
-        const fileRes = await fetch(fileUrl, {
-          headers: { 'Authorization': `Bearer ${session.provider_token}` }
-        })
-        if (fileRes.ok) {
-          const fileData = await fileRes.json()
-          packageContent = JSON.parse(atob(fileData.content))
+      for (const item of (searchData.items || [])) {
+        if (item.name === 'Dockerfile') infraDetails.push('Docker Container')
+        if (item.name === 'docker-compose.yml') infraDetails.push('Docker Orchestration')
+        if (item.name === 'vercel.json') infraDetails.push('Vercel Infrastructure')
+        
+        if (item.name === 'package.json' && !packageContent) {
+          const fileRes = await fetch(item.url, { headers })
+          if (fileRes.ok) {
+            const fileData = await fileRes.json()
+            packageContent = JSON.parse(atob(fileData.content))
+          }
         }
       }
     }
 
-    // Jika tetap tidak ketemu package.json, coba cek bahasa utama repo
-    if (!packageContent) {
-      const repoRes = await fetch(`https://api.github.com/repos/${repoFullName}`, {
-        headers: { 'Authorization': `Bearer ${session.provider_token}` }
-      })
-      const repoData = await repoRes.json()
-      return { stack: [repoData.language || 'Custom Architecture'], note: 'No package.json found' }
+    const detected = [...topLanguages, ...infraDetails]
+    
+    if (packageContent) {
+      const allDeps = { ...packageContent.dependencies, ...packageContent.devDependencies }
+      
+      // Frameworks
+      if (allDeps['next']) detected.push('Next.js Framework')
+      if (allDeps['express']) detected.push('Express.js Server')
+      if (allDeps['@nestjs/core']) detected.push('NestJS Architecture')
+      
+      // Database & ORM
+      if (allDeps['prisma']) detected.push('Prisma (PostgreSQL/MySQL)')
+      if (allDeps['mongoose']) detected.push('MongoDB (NoSQL)')
+      if (allDeps['drizzle-orm']) detected.push('Drizzle (SQL)')
+      if (allDeps['pg']) detected.push('PostgreSQL Native')
+      if (allDeps['redis']) detected.push('Redis Cache')
+      
+      // Auth & Cloud
+      if (allDeps['@supabase/supabase-js']) detected.push('Supabase Cloud')
+      if (allDeps['firebase']) detected.push('Firebase Infrastructure')
+      if (allDeps['next-auth'] || allDeps['@auth/core']) detected.push('Auth.js Security')
+      
+      // UI & Logic
+      if (allDeps['tailwindcss']) detected.push('Tailwind CSS')
+      if (allDeps['framer-motion']) detected.push('Framer Animations')
     }
 
-    const allDeps = { ...packageContent.dependencies, ...packageContent.devDependencies }
-
-    // 2. Mapping Logic (Architecture Intelligence)
-    const detected = []
-    if (allDeps['next']) detected.push('Next.js')
-    if (allDeps['react']) detected.push('React')
-    if (allDeps['typescript']) detected.push('TypeScript')
-    if (allDeps['tailwindcss']) detected.push('TailwindCSS')
-    if (allDeps['prisma']) detected.push('Prisma ORM')
-    if (allDeps['@supabase/supabase-js']) detected.push('Supabase')
-    if (allDeps['drizzle-orm']) detected.push('Drizzle ORM')
-    if (allDeps['framer-motion']) detected.push('Framer Motion')
-    if (allDeps['lucide-react']) detected.push('Lucide Icons')
-    if (allDeps['axios']) detected.push('Axios')
-    if (allDeps['express']) detected.push('Express.js')
-    if (allDeps['mongoose']) detected.push('MongoDB')
-    if (allDeps['firebase']) detected.push('Firebase')
-    if (allDeps['@nestjs/core']) detected.push('NestJS')
-    if (allDeps['vite']) detected.push('Vite')
+    // Jika kosong, pakai bahasa utama
+    const finalStack = detected.length > 0 ? Array.from(new Set(detected)) : ['Custom Stack']
 
     return { 
-      stack: detected.length > 0 ? detected : [packageContent.name || 'Node.js Project'],
-      path: 'detected'
+      stack: finalStack,
+      details: {
+        languages,
+        mainLang: topLanguages[0]
+      }
     }
   } catch (err) {
     console.error('Analysis error:', err)
-    return { stack: ['Unknown Stack'], error: 'Analysis failed' }
+    return { stack: ['Analysis Failed'], error: 'Deep analysis failed' }
   }
 }
