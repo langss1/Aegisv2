@@ -1,4 +1,5 @@
 'use client'
+export const dynamic = 'force-dynamic'
 import dynamic from 'next/dynamic'
 import styles from './page.module.css'
 import Navbar from '@/components/Navbar'
