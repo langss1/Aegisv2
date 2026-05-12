@@ -16,7 +16,7 @@ export default function DashboardPage() {
   ]
 
   return (
-    <div>
+    <div className={styles.content}>
       <div className={styles.pageHeader}>
         <h1>Dashboard Overview</h1>
         <p>Monitor your security pipeline and autonomous agent health.</p>

@@ -514,14 +514,14 @@
 
 /* Compact but Readable Content */
 .mainContent {
-  padding: 60px 40px; /* Increased top padding and side padding */
+  padding: 60px 48px; /* Standardized side padding */
   width: 100%;
   height: calc(100vh - 80px);
-  overflow-y: auto; /* Allow scrolling if content is too long */
+  overflow-y: auto;
   position: relative;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-start; /* Aligns content to the left like Projects page */
 }
 
 .pageHeader {
@@ -750,3 +750,328 @@
     grid-template-columns: 1fr;
   }
 }
+
+.logoutBtn {
+  margin-top: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px;
+  background: rgba(239, 68, 68, 0.05);
+  border: 1px solid rgba(239, 68, 68, 0.1);
+  border-radius: 10px;
+  color: #f87171;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.logoutBtn:hover {
+  background: #ef4444;
+  color: white;
+  border-color: #ef4444;
+}
+
+.userAvatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: #18181b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: #ef4444;
+  border: 1px solid rgba(220, 38, 38, 0.2);
+  object-fit: cover;
+}
+
+.repoList {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 400px;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+.repoItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  transition: all 0.2s ease;
+}
+
+.repoItem:hover {
+  background: rgba(239, 68, 68, 0.05);
+  border-color: rgba(239, 68, 68, 0.2);
+}
+
+.repoInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.repoInfo strong {
+  font-size: 14px;
+  color: #fff;
+}
+
+.repoInfo span {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.selectRepoBtn {
+  background: #ef4444;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.selectRepoBtn:hover {
+  background: #dc2626;
+  transform: scale(1.05);
+}
+
+.loadingBox {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 40px;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 14px;
+}
+
+.backToOptions {
+  margin-top: 16px;
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.backToOptions:hover {
+  color: #fff;
+}
+
+.noRepos {
+  text-align: center;
+  padding: 40px;
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 14px;
+}
+
+.spinner {
+  width: 24px;
+  height: 24px;
+  border: 3px solid rgba(239, 68, 68, 0.1);
+  border-top-color: #ef4444;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}/* ... (semua CSS sebelumnya tetap di sini) ... */
+
+/* Gaya baru untuk Modal Import Repo */
+.importWrapper {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  animation: fade-in 0.4s ease;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.repoHeader {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.userSelector {
+  flex: 1;
+  background: #09090b;
+  border: 1px solid #27272a;
+  border-radius: 10px;
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #fff;
+  font-size: 14px;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.userSelector:hover {
+  border-color: #3f3f46;
+}
+
+.searchBar {
+  flex: 1.5;
+  background: #09090b;
+  border: 1px solid #27272a;
+  border-radius: 10px;
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #fff;
+}
+
+.searchBar input {
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 14px;
+  width: 100%;
+  outline: none;
+}
+
+.repoList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 420px;
+  overflow-y: auto;
+  background: #09090b;
+  border: 1px solid #18181b;
+  border-radius: 12px;
+}
+
+.repoItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid #18181b;
+  transition: background 0.2s;
+}
+
+.repoItem:last-child {
+  border-bottom: none;
+}
+
+.repoItem:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.repoLeft {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.repoIcon {
+  width: 40px;
+  height: 40px;
+  background: #000;
+  border: 1px solid #18181b;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #52525b;
+}
+
+.repoDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.repoDetails strong {
+  font-size: 15px;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.privateTag {
+  font-size: 12px;
+  opacity: 0.5;
+}
+
+.repoDetails span {
+  font-size: 12px;
+  color: #52525b;
+}
+
+.importBtn {
+  background: #fff;
+  color: #000;
+  border: none;
+  padding: 8px 24px;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  transition: transform 0.2s, opacity 0.2s;
+}
+
+.importBtn:hover {
+  transform: scale(1.05);
+  opacity: 0.9;
+}
+
+.loadingBox {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 60px;
+  color: #52525b;
+}
+
+.spinner {
+  width: 24px;
+  height: 24px;
+  border: 3px solid #18181b;
+  border-top-color: #ef4444;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.backToOptions {
+  margin-top: 20px;
+  background: none;
+  border: none;
+  color: #52525b;
+  font-size: 13px;
+  cursor: pointer;
+  align-self: flex-start;
+}
+
+.backToOptions:hover {
+  color: #fff;
+}
+
+.content {
+  width: 100%;
+  animation: fade-in 0.5s ease;
+}
+

@@ -3,14 +3,31 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import styles from './phase0.module.css'
 import { motion, AnimatePresence } from 'framer-motion'
+import { getGitHubRepos } from '@/app/auth/github/actions'
 
 export default function Phase0Page() {
   const [sourceType, setSourceType] = useState<'github' | 'public' | null>(null)
   const [url, setUrl] = useState('')
   const [step, setStep] = useState<'selection' | 'config' | 'analyzing' | 'stack_confirm'>('selection')
+  const [repos, setRepos] = useState<any[]>([])
+  const [loadingRepos, setLoadingRepos] = useState(false)
   const [detectedStack, setDetectedStack] = useState(['Next.js', 'TypeScript', 'TailwindCSS', 'Node.js'])
   const [newTech, setNewTech] = useState('')
   const router = useRouter()
+
+  const handleFetchRepos = async () => {
+    setLoadingRepos(true)
+    setSourceType('github')
+    setStep('config')
+    const { repos, error } = await getGitHubRepos()
+    if (error) {
+      alert(error)
+      setStep('selection')
+    } else {
+      setRepos(repos || [])
+    }
+    setLoadingRepos(false)
+  }
 
   const handleLaunch = (e: React.FormEvent) => {
     e.preventDefault()
@@ -37,70 +54,133 @@ export default function Phase0Page() {
 
   return (
     <div className={styles.content}>
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className={styles.modal}
-      >
-        <AnimatePresence mode="wait">
-          {step === 'selection' && (
+      {step === 'config' && sourceType === 'github' ? (
             <motion.div 
-              key="selection"
+              key="repos"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              exit={{ opacity: 0, y: -20 }}
+              exit={{ opacity: 0 }}
+              className={styles.fullPageImport}
             >
-              <h1>Initialize New Scan</h1>
-              <p>Select your target source to start AEGIS autonomous analysis.</p>
+              <div className={styles.fullPageHeader}>
+                <button type="button" onClick={() => setStep('selection')} className={styles.backLink}>
+                  ← Back to Selection
+                </button>
+                <h1>Import Git Repository</h1>
+                <p>Select a project from your GitHub to begin autonomous analysis.</p>
+              </div>
 
-              <div className={styles.cardGrid}>
-                <div className={styles.selectionCard} onClick={() => { setSourceType('github'); setStep('config'); }}>
-                  <div className={styles.iconBox}>📦</div>
-                  <h2>GitHub Repository</h2>
-                  <span>Connect your private or public repository for full SAST analysis.</span>
+              <div className={styles.fullPageBody}>
+                <div className={styles.filterRow}>
+                  <div className={styles.userSelector}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/>
+                    </svg>
+                    <span>langss1</span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" style={{marginLeft: 'auto', opacity: 0.3}}><path d="m6 9 6 6 6-6"/></svg>
+                  </div>
+                  <div className={styles.searchBarFull}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" style={{opacity: 0.3}}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                    <input type="text" placeholder="Search your repositories..." />
+                  </div>
                 </div>
-                <div className={styles.selectionCard} onClick={() => { setSourceType('public'); setStep('config'); }}>
-                  <div className={styles.iconBox}>🌐</div>
-                  <h2>Public Website</h2>
-                  <span>Scan a live production URL for DAST and surface vulnerabilities.</span>
+
+                <div className={styles.fullRepoList}>
+                  {loadingRepos ? (
+                    <div className={styles.loadingBoxFull}>
+                      <div className={styles.spinnerLarge} />
+                      <span>Fetching your GitHub projects...</span>
+                    </div>
+                  ) : (
+                    repos.map(repo => (
+                      <div key={repo.id} className={styles.fullRepoItem}>
+                        <div className={styles.repoLeft}>
+                          <div className={styles.repoIconLarge}>
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2L3 7v10l9 5 9-5V7L12 2z"/></svg>
+                          </div>
+                          <div className={styles.repoInfo}>
+                            <h3>{repo.name} {repo.private && <span style={{opacity: 0.4, fontSize: '14px'}}>🔒</span>}</h3>
+                            <div className={styles.repoMeta}>
+                              <span className={styles.langTag}>{repo.language || 'Code'}</span>
+                              <span className={styles.dot}>•</span>
+                              <span>Updated {new Date(repo.updated_at).toLocaleDateString()}</span>
+                            </div>
+                          </div>
+                        </div>
+                        <button className={styles.fullImportBtn} onClick={() => { setUrl(repo.html_url); setStep('analyzing'); setTimeout(() => setStep('stack_confirm'), 2000); }}>
+                          Import
+                        </button>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
             </motion.div>
-          )}
-
-          {step === 'config' && (
+          ) : (
             <motion.div 
-              key="config"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className={styles.inputFlow}
+              className={styles.modal}
             >
-              <h1 style={{ marginBottom: '40px' }}>{sourceType === 'github' ? 'GitHub Config' : 'Website Config'}</h1>
-              
-              <form onSubmit={handleLaunch}>
-                <div className={styles.inputGroup}>
-                  <label>{sourceType === 'github' ? 'REPOSITORY_URL' : 'TARGET_ENDPOINT'}</label>
-                  <input 
-                    className={styles.inputBox}
-                    type="text" 
-                    placeholder={sourceType === 'github' ? "https://github.com/username/repo" : "https://example.com"}
-                    value={url}
-                    onChange={(e) => setUrl(e.target.value)}
-                    required
-                    autoFocus
-                  />
-                </div>
-                
-                <div style={{ display: 'flex', gap: '16px' }}>
-                  <button type="button" onClick={() => setStep('selection')} className={styles.tab} style={{ flex: 1, background: 'rgba(255,255,255,0.05)', border: 'none', color: '#fff', borderRadius: '16px', cursor: 'pointer' }}>Back</button>
-                  <button type="submit" className={styles.launchBtn} style={{ flex: 2 }}>
-                    Launch Analysis
-                  </button>
-                </div>
-              </form>
-            </motion.div>
-          )}
+              <AnimatePresence mode="wait">
+                {step === 'selection' && (
+                  <motion.div 
+                    key="selection"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0, y: -20 }}
+                  >
+                    <h1>Initialize New Scan</h1>
+                    <p>Select your target source to start AEGIS autonomous analysis.</p>
+
+                    <div className={styles.cardGrid}>
+                      <div className={styles.selectionCard} onClick={handleFetchRepos}>
+                        <div className={styles.iconBox}>📦</div>
+                        <h2>GitHub Repository</h2>
+                        <span>Connect your private or public repository for full SAST analysis.</span>
+                      </div>
+                      <div className={styles.selectionCard} onClick={() => { setSourceType('public'); setStep('config'); }}>
+                        <div className={styles.iconBox}>🌐</div>
+                        <h2>Public Website</h2>
+                        <span>Scan a live production URL for DAST and surface vulnerabilities.</span>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+
+                {step === 'config' && sourceType === 'public' && (
+                  <motion.div 
+                    key="config"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    className={styles.inputFlow}
+                  >
+                    <h1 style={{ marginBottom: '40px' }}>Website Config</h1>
+                    
+                    <form onSubmit={handleLaunch}>
+                      <div className={styles.inputGroup}>
+                        <label>TARGET_ENDPOINT</label>
+                        <input 
+                          className={styles.inputBox}
+                          type="text" 
+                          placeholder="https://example.com"
+                          value={url}
+                          onChange={(e) => setUrl(e.target.value)}
+                          required
+                          autoFocus
+                        />
+                      </div>
+                      
+                      <div style={{ display: 'flex', gap: '16px' }}>
+                        <button type="button" onClick={() => setStep('selection')} className={styles.tab} style={{ flex: 1, background: 'rgba(255,255,255,0.05)', border: 'none', color: '#fff', borderRadius: '16px', cursor: 'pointer' }}>Back</button>
+                        <button type="submit" className={styles.launchBtn} style={{ flex: 2 }}>
+                          Launch Analysis
+                        </button>
+                      </div>
+                    </form>
+                  </motion.div>
+                )}
 
           {step === 'analyzing' && (
             <motion.div 
@@ -212,6 +292,7 @@ export default function Phase0Page() {
           )}
         </AnimatePresence>
       </motion.div>
+    )}
     </div>
   )
 }
