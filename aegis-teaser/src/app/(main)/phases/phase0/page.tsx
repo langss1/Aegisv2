@@ -68,18 +68,24 @@ export default function Phase0Page() {
 
   const startFinalScan = async () => {
     try {
+      if (!selectedRepo && !url) {
+        alert('No repository or URL selected.')
+        return
+      }
+
       // Create project in database with verified tech stack
       await createProject({
         name: selectedRepo?.name || url.split('/').pop() || 'Untitled Project',
         language: selectedRepo?.language || detectedStack[0] || 'Unknown',
         repo_url: url,
-        tech_stack: detectedStack // This will be the base for SAST & Heal
+        tech_stack: detectedStack
       })
       
-      router.push('/phases/phase1')
-    } catch (err) {
+      alert('✅ Architecture successfully saved to database!')
+      router.push('/dashboard') // Back to dashboard for now as requested
+    } catch (err: any) {
       console.error('Final scan init error:', err)
-      alert('Failed to initialize project in database')
+      alert(`❌ Database Error: ${err.message || 'Please ensure you have added the tech_stack column in Supabase SQL Editor.'}`)
     }
   }
 
