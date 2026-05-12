@@ -85,7 +85,7 @@ export async function analyzeGitHubRepo(repoFullName: string) {
           if (content.includes('image: redis')) detected.add('Redis Container')
         }
 
-        // Analyze package.json (Deep Dependencies)
+        // Analyze package.json (Extreme Deep Scan)
         if (fileName.includes('package.json')) {
           const pkg = JSON.parse(content)
           const all = { ...pkg.dependencies, ...pkg.devDependencies }
@@ -93,6 +93,10 @@ export async function analyzeGitHubRepo(repoFullName: string) {
           if (all['typescript']) detected.add('Strict TypeScript Architecture')
           if (all['prisma']) detected.add('Prisma ORM Layer')
           if (all['tailwindcss']) detected.add('Tailwind CSS Design System')
+          if (all['framer-motion']) detected.add('Framer Motion Animations')
+          if (all['lucide-react']) detected.add('Lucide UI Icons')
+          if (all['@tanstack/react-query']) detected.add('React Query (State Mgmt)')
+          if (all['zustand']) detected.add('Zustand Global State')
         }
       } catch (e) {
         console.error('File analysis error:', file.path, e)
@@ -101,12 +105,13 @@ export async function analyzeGitHubRepo(repoFullName: string) {
 
     await Promise.all(analysisPromises)
 
-    // 4. Structural Logic Mapping
+    // 4. Structural Logic Mapping (Extreme Detail)
     if (filePaths.some((p: string) => p.startsWith('src/app') || p.startsWith('app/'))) detected.add('Next.js App Router (Modern Architecture)')
     if (filePaths.some((p: string) => p.includes('actions/'))) detected.add('Server Actions Communication Pattern')
     if (filePaths.some((p: string) => p.includes('middleware.ts'))) detected.add('Edge Security Middleware')
     if (filePaths.some((p: string) => p.includes('.github/workflows'))) detected.add('GitHub Actions CI/CD Pipeline')
     if (filePaths.some((p: string) => p.includes('utils/supabase'))) detected.add('Supabase Infrastructure Layer')
+    if (filePaths.some((p: string) => p.includes('components/ui'))) detected.add('Atomic UI Design (Shadcn/UI Pattern)')
 
     // 5. Language Stats
     const langRes = await fetch(`https://api.github.com/repos/${repoFullName}/languages`, { headers })
