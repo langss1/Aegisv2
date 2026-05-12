@@ -53,7 +53,7 @@ export default function LoginPage() {
                 <path d="M12 22V12M12 12l9-5M12 12L3 7" stroke="white" strokeWidth="1" strokeOpacity="0.5"/>
               </svg>
             </div>
-            <h2 className={styles.cardTitle}>Cloud Dashboard</h2>
+            <h2 className={styles.cardTitle}>Web Dashboard</h2>
             <p className={styles.cardSubtitle}>Centralized security for your team</p>
           </div>
 
