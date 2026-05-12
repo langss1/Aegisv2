@@ -85,8 +85,16 @@ export default function Phase0Page() {
         throw new Error(result.error)
       }
       
-      alert('✅ Architecture successfully saved to database!')
-      router.push('/dashboard') 
+      // Store scan context for Phase 1
+      localStorage.setItem('aegis_scan_context', JSON.stringify({
+        repoUrl: url,
+        repoName: selectedRepo?.name || url.split('/').pop() || 'Untitled Project',
+        techStack: detectedStack,
+        projectId: result.data?.id
+      }))
+      
+      // Redirect to Phase 1 for source code scanning
+      router.push('/phases/phase1') 
     } catch (err: any) {
       console.error('Final scan init error:', err)
       alert(`❌ Database Error: ${err.message}`)
