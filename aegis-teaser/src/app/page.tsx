@@ -1,6 +1,6 @@
 'use client'
 export const dynamic = 'force-dynamic'
-import dynamic from 'next/dynamic'
+import nextDynamic from 'next/dynamic'
 import styles from './page.module.css'
 import Navbar from '@/components/Navbar'
 import HeroSection from '@/components/HeroSection'
@@ -11,7 +11,7 @@ import TestimonialsSection from '@/components/TestimonialsSection'
 import CTASection from '@/components/CTASection'
 import Footer from '@/components/Footer'
 
-const ParticleField = dynamic(() => import('@/components/ParticleField'), { ssr: false })
+const ParticleField = nextDynamic(() => import('@/components/ParticleField'), { ssr: false })
 
 export default function Home() {
   return (
