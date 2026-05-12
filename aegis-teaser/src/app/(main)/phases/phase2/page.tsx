@@ -40,7 +40,11 @@ export default function Phase2Page() {
   const [selectedVuln, setSelectedVuln] = useState<PentestResult | null>(null)
   const [fixingId, setFixingId] = useState<number | null>(null)
   const [targetUrl, setTargetUrl] = useState('')
+  const [repoUrl, setRepoUrl] = useState('')
   const [showInput, setShowInput] = useState(false)
+  const [mode, setMode] = useState<'url' | 'repo'>('repo')
+  const [generatedCommand, setGeneratedCommand] = useState('')
+  const [copied, setCopied] = useState(false)
   const terminalRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
 
@@ -63,6 +67,28 @@ export default function Phase2Page() {
     addLog('Enter target URL to begin security scan...')
   }, [])
 
+  const generateNgrokCommand = () => {
+    if (!repoUrl.trim() || !repoUrl.includes('github.com')) {
+      addLog('ERROR: Please enter a valid GitHub URL')
+      return
+    }
+    
+    const ngrokToken = process.env.NEXT_PUBLIC_NGROK_TOKEN || '3DUQzokiv5uu7N0AbYEtEOlPtxw_2bvWYRxbBicG55VFVfmu'
+    
+    // Generate one-liner command
+    const command = `git clone ${repoUrl} aegis-target && cd aegis-target && npm install && npm start & sleep 5 && ngrok config add-authtoken ${ngrokToken} && ngrok http 3000`
+    
+    setGeneratedCommand(command)
+    addLog('Command generated! Copy and run in your terminal.')
+    addLog('After ngrok starts, copy the URL and paste it below.')
+  }
+
+  const copyCommand = () => {
+    navigator.clipboard.writeText(generatedCommand)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
   const handleStartPentest = () => {
     if (!targetUrl.trim()) return
     
@@ -72,6 +98,7 @@ export default function Phase2Page() {
     }
     
     setShowInput(false)
+    setGeneratedCommand('')
     setDeployment(prev => ({ 
       ...prev, 
       status: 'deployed',
@@ -315,7 +342,7 @@ export default function Phase2Page() {
         {/* Right: Status & Results */}
         <div className={styles.statusArea}>
           <AnimatePresence mode="wait">
-            {/* URL Input Form */}
+            {/* Input Form */}
             {showInput && deployment.status === 'idle' ? (
               <motion.div
                 key="url-input"
@@ -325,36 +352,87 @@ export default function Phase2Page() {
                 className={styles.statusCard}
               >
                 <div className={styles.vercelBrand}>
-                  <div className={styles.vercelIcon}>🎯</div>
-                  <span>Live Pentest</span>
+                  <div className={styles.vercelIcon}>🚀</div>
+                  <span>Auto Deploy + Pentest</span>
                 </div>
 
-                <h2 className={styles.statusTitle}>Enter Target URL</h2>
-                <p style={{ opacity: 0.6, marginBottom: '24px', fontSize: '14px' }}>
-                  Paste your ngrok URL atau website yang mau di-scan
-                </p>
-
-                <div className={styles.repoInputGroup}>
-                  <input
-                    type="text"
-                    value={targetUrl}
-                    onChange={(e) => setTargetUrl(e.target.value)}
-                    placeholder="https://xxxx.ngrok-free.app"
-                    className={styles.repoInput}
-                    onKeyDown={(e) => e.key === 'Enter' && handleStartPentest()}
-                  />
-                  <button onClick={handleStartPentest} className={styles.deployBtn}>
-                    Start Pentest
-                  </button>
+                {/* Step 1: GitHub Repo */}
+                <div style={{ marginBottom: '20px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                    <span style={{ background: '#dc2626', color: '#fff', width: '24px', height: '24px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 'bold' }}>1</span>
+                    <span style={{ fontWeight: 700 }}>Enter GitHub Repo</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <input
+                      type="text"
+                      value={repoUrl}
+                      onChange={(e) => setRepoUrl(e.target.value)}
+                      placeholder="https://github.com/owner/repo"
+                      className={styles.repoInput}
+                      onKeyDown={(e) => e.key === 'Enter' && generateNgrokCommand()}
+                    />
+                    <button onClick={generateNgrokCommand} className={styles.deployBtn} style={{ whiteSpace: 'nowrap' }}>
+                      Generate
+                    </button>
+                  </div>
                 </div>
 
-                <div style={{ marginTop: '24px', padding: '16px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', textAlign: 'left' }}>
-                  <p style={{ fontSize: '12px', fontWeight: 700, marginBottom: '8px', color: '#f87171' }}>Quick Start dengan Ngrok:</p>
-                  <code style={{ fontSize: '11px', opacity: 0.7, display: 'block', lineHeight: 1.8 }}>
-                    1. cd your-app && npm start<br/>
-                    2. ngrok http 3000<br/>
-                    3. Copy URL → Paste di atas
-                  </code>
+                {/* Step 2: Generated Command */}
+                {generatedCommand && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    style={{ marginBottom: '20px' }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                      <span style={{ background: '#dc2626', color: '#fff', width: '24px', height: '24px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 'bold' }}>2</span>
+                      <span style={{ fontWeight: 700 }}>Run in Terminal</span>
+                    </div>
+                    <div style={{ background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '12px', position: 'relative' }}>
+                      <code style={{ fontSize: '10px', color: '#4ade80', wordBreak: 'break-all', display: 'block', paddingRight: '60px' }}>
+                        {generatedCommand}
+                      </code>
+                      <button 
+                        onClick={copyCommand}
+                        style={{ 
+                          position: 'absolute', 
+                          right: '8px', 
+                          top: '50%', 
+                          transform: 'translateY(-50%)',
+                          background: copied ? '#22c55e' : 'rgba(255,255,255,0.1)',
+                          border: 'none',
+                          borderRadius: '6px',
+                          padding: '6px 12px',
+                          color: '#fff',
+                          fontSize: '11px',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        {copied ? '✓ Copied!' : 'Copy'}
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+
+                {/* Step 3: Paste ngrok URL */}
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                    <span style={{ background: generatedCommand ? '#dc2626' : 'rgba(255,255,255,0.2)', color: '#fff', width: '24px', height: '24px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 'bold' }}>3</span>
+                    <span style={{ fontWeight: 700, opacity: generatedCommand ? 1 : 0.5 }}>Paste ngrok URL & Start</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <input
+                      type="text"
+                      value={targetUrl}
+                      onChange={(e) => setTargetUrl(e.target.value)}
+                      placeholder="https://xxxx.ngrok-free.app"
+                      className={styles.repoInput}
+                      onKeyDown={(e) => e.key === 'Enter' && handleStartPentest()}
+                    />
+                    <button onClick={handleStartPentest} className={styles.deployBtn} style={{ background: 'linear-gradient(135deg, #dc2626, #991b1b)' }}>
+                      Start Pentest
+                    </button>
+                  </div>
                 </div>
               </motion.div>
             ) : deployment.status !== 'complete' && deployment.status !== 'fixing' && deployment.status !== 'fixed' ? (
