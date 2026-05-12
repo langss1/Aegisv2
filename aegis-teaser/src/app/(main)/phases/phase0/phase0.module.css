@@ -2,9 +2,8 @@
   width: 100%;
   min-height: calc(100vh - 64px);
   display: flex;
-  align-items: flex-start; /* Start from top to prevent clipping */
+  align-items: flex-start;
   justify-content: center;
-  overflow-y: auto; /* Enable vertical scroll */
   padding: 40px 20px;
   font-family: var(--font-poppins), sans-serif;
   color: #fff;
