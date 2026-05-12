@@ -85,18 +85,22 @@ export async function analyzeGitHubRepo(repoFullName: string) {
           if (content.includes('image: redis')) detected.add('Redis Container')
         }
 
-        // Analyze package.json (Extreme Deep Scan)
+        // Analyze package.json (Fuzzy Intelligence Scan)
         if (fileName.includes('package.json')) {
           const pkg = JSON.parse(content)
-          const all = { ...pkg.dependencies, ...pkg.devDependencies }
-          if (all['next']) detected.add(`Next.js ${all['next']}`)
-          if (all['typescript']) detected.add('Strict TypeScript Architecture')
-          if (all['prisma']) detected.add('Prisma ORM Layer')
-          if (all['tailwindcss']) detected.add('Tailwind CSS Design System')
-          if (all['framer-motion']) detected.add('Framer Motion Animations')
-          if (all['lucide-react']) detected.add('Lucide UI Icons')
-          if (all['@tanstack/react-query']) detected.add('React Query (State Mgmt)')
-          if (all['zustand']) detected.add('Zustand Global State')
+          const allStr = JSON.stringify(pkg).toLowerCase()
+          const allDeps = { ...pkg.dependencies, ...pkg.devDependencies }
+
+          if (allDeps['next']) detected.add(`Next.js ${allDeps['next']}`)
+          if (allStr.includes('typescript')) detected.add('Strict TypeScript Architecture')
+          if (allStr.includes('tailwind')) detected.add('Tailwind CSS Design System')
+          if (allStr.includes('framer-motion')) detected.add('Framer Motion Animations')
+          if (allStr.includes('lucide')) detected.add('Lucide UI Icons')
+          if (allStr.includes('prisma')) detected.add('Prisma ORM Layer')
+          if (allStr.includes('drizzle')) detected.add('Drizzle ORM Layer')
+          if (allStr.includes('supabase')) detected.add('Supabase Backend Integration')
+          if (allStr.includes('clerk') || allStr.includes('next-auth')) detected.add('Advanced Auth Security')
+          if (allStr.includes('query') || allStr.includes('swr')) detected.add('Data Fetching Layer (React Query/SWR)')
         }
       } catch (e) {
         console.error('File analysis error:', file.path, e)
@@ -110,8 +114,9 @@ export async function analyzeGitHubRepo(repoFullName: string) {
     if (filePaths.some((p: string) => p.includes('actions/'))) detected.add('Server Actions Communication Pattern')
     if (filePaths.some((p: string) => p.includes('middleware.ts'))) detected.add('Edge Security Middleware')
     if (filePaths.some((p: string) => p.includes('.github/workflows'))) detected.add('GitHub Actions CI/CD Pipeline')
-    if (filePaths.some((p: string) => p.includes('utils/supabase'))) detected.add('Supabase Infrastructure Layer')
+    if (filePaths.some((p: string) => p.includes('supabase'))) detected.add('Supabase Infrastructure Layer')
     if (filePaths.some((p: string) => p.includes('components/ui'))) detected.add('Atomic UI Design (Shadcn/UI Pattern)')
+    if (filePaths.some((p: string) => p.includes('tailwind.config'))) detected.add('Tailwind CSS Configured')
 
     // 5. Language Stats
     const langRes = await fetch(`https://api.github.com/repos/${repoFullName}/languages`, { headers })
