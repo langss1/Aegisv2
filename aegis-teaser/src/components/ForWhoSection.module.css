@@ -17,7 +17,7 @@
 }
 
 .title {
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: var(--font-heading), sans-serif;
   font-size: clamp(28px, 4.5vw, 52px);
   font-weight: 700;
   color: white;
@@ -26,6 +26,7 @@
 }
 
 .subtitle {
+  font-family: var(--font-poppins), sans-serif;
   font-size: 17px;
   color: rgba(255, 255, 255, 0.55);
   max-width: 500px;
@@ -96,7 +97,7 @@
 }
 
 .panelTitle {
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: var(--font-heading), sans-serif;
   font-size: clamp(24px, 3vw, 36px);
   font-weight: 700;
   color: white;
@@ -106,6 +107,7 @@
 }
 
 .panelDesc {
+  font-family: var(--font-poppins), sans-serif;
   font-size: 15px;
   color: rgba(255, 255, 255, 0.6);
   line-height: 1.75;
@@ -187,7 +189,7 @@
 }
 
 .roleName {
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: var(--font-heading), sans-serif;
   font-size: 20px;
   font-weight: 700;
   color: white;

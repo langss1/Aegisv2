@@ -35,7 +35,7 @@ export default function Navbar() {
 
         <div className={styles.navActions}>
           <Link href="/login" className="btn-primary" style={{ padding: '10px 24px', fontSize: '14px' }} id="nav-login-btn">
-            Get Early Access
+            Login
           </Link>
           <button className={styles.hamburger} onClick={() => setMenuOpen(!menuOpen)} aria-label="menu">
             <span /><span /><span />

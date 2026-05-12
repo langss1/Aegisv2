@@ -85,8 +85,6 @@
   color: #fff;
 }
 
-<<<<<<< HEAD
-=======
 .headerPath {
   color: #3f3f46;
   font-size: 11px;
@@ -95,7 +93,6 @@
   opacity: 0.8;
 }
 
->>>>>>> ee65a2e9f35f31a680ad17b094347e848b69aad0
 .headerStatus {
   display: flex;
   align-items: center;

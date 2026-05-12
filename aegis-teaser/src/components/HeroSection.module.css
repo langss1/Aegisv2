@@ -91,7 +91,7 @@
 
 
 .headline {
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: var(--font-heading), sans-serif;
   font-size: clamp(48px, 6vw, 80px);
   font-weight: 800;
   line-height: 1;
@@ -140,6 +140,7 @@
 }
 
 .subtext {
+  font-family: var(--font-poppins), sans-serif;
   font-size: 17px;
   line-height: 1.7;
   color: rgba(255, 255, 255, 0.65);
@@ -175,7 +176,7 @@
 .statItem:last-child { border-right: none; }
 
 .statVal {
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: var(--font-heading), sans-serif;
   font-size: 32px;
   font-weight: 700;
   background: linear-gradient(135deg, #f87171, #f472b6);
@@ -185,6 +186,7 @@
 }
 
 .statLabel {
+  font-family: var(--font-poppins), sans-serif;
   font-size: 13px;
   color: rgba(255, 255, 255, 0.5);
   margin-top: 4px;
@@ -236,4 +238,29 @@
   .shieldDeco { display: none; }
   .statItem { padding: 12px 20px; }
   .statVal { font-size: 24px; }
+  .floatingIcons { display: none; }
 }
+
+.floatingIcons {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.iconNetwork {
+  position: absolute;
+  top: 15%;
+  left: 10%;
+  animation: float 12s ease-in-out infinite alternate;
+  opacity: 0.6;
+}
+
+.iconSword {
+  position: absolute;
+  bottom: 25%;
+  right: 15%;
+  animation: float 10s ease-in-out infinite;
+  opacity: 0.5;
+}
+

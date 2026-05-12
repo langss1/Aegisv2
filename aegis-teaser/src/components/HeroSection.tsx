@@ -55,7 +55,7 @@ export default function HeroSection() {
         <div className={styles.orbTertiary} />
       </div>
 
-      {/* Shield decoration */}
+      {/* Security Decorations */}
       <div className={styles.shieldDeco}>
         <svg className={styles.shieldSvg} viewBox="0 0 200 240" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M100 10L20 45v80c0 55 80 100 80 100s80-45 80-100V45L100 10z" 
@@ -69,6 +69,24 @@ export default function HeroSection() {
             </linearGradient>
           </defs>
         </svg>
+      </div>
+
+      <div className={styles.floatingIcons}>
+        {/* Network Icon */}
+        <div className={styles.iconNetwork}>
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="12" r="3" stroke="#dc2626" strokeWidth="1.5"/>
+            <path d="M12 2v7m0 6v7M2 12h7m6 0h7m-3.5-6.5l-4.5 4.5m-1 1l-4.5 4.5m0-11l4.5 4.5m1 1l4.5 4.5" stroke="#dc2626" strokeWidth="1.5" strokeOpacity="0.4"/>
+          </svg>
+        </div>
+        {/* Sword Icon */}
+        <div className={styles.iconSword}>
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+            <path d="M14.5 3.5L3.5 14.5l6 6 11-11-6-6z" stroke="#f472b6" strokeWidth="1.5" strokeOpacity="0.5"/>
+            <path d="M16 10l5 5m-7-3l5 5" stroke="#f472b6" strokeWidth="1.5" strokeOpacity="0.3"/>
+            <path d="M3 21l3-3" stroke="#f472b6" strokeWidth="2"/>
+          </svg>
+        </div>
       </div>
 
       <div className={styles.gradientBg} />
@@ -97,7 +115,7 @@ export default function HeroSection() {
             Watch Demo
           </a>
           <Link href="/login" className="btn-outline" id="hero-early-access">
-            Get Early Access
+            Login
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
               <path d="M5 12h14M12 5l7 7-7 7" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
             </svg>

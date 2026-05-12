@@ -25,7 +25,7 @@
   align-items: center;
   gap: 10px;
   margin-bottom: 16px;
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: var(--font-heading), sans-serif;
   font-size: 20px;
   font-weight: 700;
   color: white;
@@ -43,6 +43,7 @@
 }
 
 .tagline {
+  font-family: var(--font-poppins), sans-serif;
   font-size: 14px;
   color: rgba(255,255,255,0.45);
   line-height: 1.6;
@@ -67,6 +68,7 @@
 }
 
 .linkTitle {
+  font-family: var(--font-heading), sans-serif;
   font-size: 11px;
   font-weight: 700;
   color: rgba(248,113,113,0.8);
@@ -76,6 +78,7 @@
 }
 
 .linkGroup a {
+  font-family: var(--font-poppins), sans-serif;
   font-size: 14px;
   color: rgba(255,255,255,0.45);
   text-decoration: none;
