@@ -128,57 +128,67 @@ export default function Phase1Page() {
           setFindings([
             { 
               id: 1, 
-              file: 'auth.py', 
-              issue: 'Hardcoded API Key', 
+              file: 'config/database.py', 
+              issue: 'Hardcoded Database Password', 
               severity: 'Critical',
-              currentCode: `AWS_SECRET = "AKIAIOSFODNN7EXAMPLE"`,
-              fixedCode: `AWS_SECRET = os.environ.get("AWS_SECRET_KEY")`,
-              line: 12,
-              description: 'API keys should be stored in environment variables, not in source code.'
+              currentCode: `DB_PASSWORD = "admin123!@#secret"`,
+              fixedCode: `DB_PASSWORD = os.environ.get("DB_PASSWORD")`,
+              line: 8,
+              description: 'Password database terekspos di source code! Hacker bisa mengakses database Anda.'
             },
             { 
               id: 2, 
-              file: 'db.py', 
-              issue: 'SQL Injection Risk', 
+              file: 'services/auth.py', 
+              issue: 'Hardcoded API Secret Key', 
               severity: 'Critical',
-              currentCode: `cursor.execute(f"SELECT * FROM users WHERE id = {user_id}")`,
-              fixedCode: `cursor.execute("SELECT * FROM users WHERE id = %s", (user_id,))`,
-              line: 45,
-              description: 'Dynamic SQL queries can allow attackers to inject malicious SQL.'
+              currentCode: `JWT_SECRET = "MySuper$ecretKey2024!xyz"`,
+              fixedCode: `JWT_SECRET = os.environ.get("JWT_SECRET")`,
+              line: 15,
+              description: 'JWT Secret key terekspos! Hacker bisa membuat token palsu dan bypass authentication.'
             },
             { 
               id: 3, 
-              file: 'utils.js', 
-              issue: 'Eval Usage', 
-              severity: 'High',
-              currentCode: `const result = eval(userInput)`,
-              fixedCode: `const result = JSON.parse(userInput)`,
-              line: 23,
-              description: 'eval() executes arbitrary code and is a security risk.'
+              file: 'config/aws.js', 
+              issue: 'AWS Credentials Exposed', 
+              severity: 'Critical',
+              currentCode: `const AWS_KEY = "AKIAIOSFODNN7EXAMPLE"\nconst AWS_SECRET = "wJalrXUtnFEMI/K7MDENG"`,
+              fixedCode: `const AWS_KEY = process.env.AWS_ACCESS_KEY_ID\nconst AWS_SECRET = process.env.AWS_SECRET_ACCESS_KEY`,
+              line: 3,
+              description: 'AWS credentials terekspos! Hacker bisa mengakses semua resource AWS Anda.'
             },
             { 
               id: 4, 
-              file: 'server.js', 
-              issue: 'Missing Rate Limiting', 
-              severity: 'Medium',
-              currentCode: `app.post('/login', handleLogin)`,
-              fixedCode: `app.post('/login', rateLimiter, handleLogin)`,
-              line: 78,
-              description: 'API endpoints should have rate limiting to prevent brute force attacks.'
+              file: 'db/connection.py', 
+              issue: 'SQL Injection Vulnerability', 
+              severity: 'High',
+              currentCode: `query = f"SELECT * FROM users WHERE id = {user_id}"`,
+              fixedCode: `query = "SELECT * FROM users WHERE id = %s", (user_id,)`,
+              line: 45,
+              description: 'SQL Injection memungkinkan hacker mengakses/menghapus seluruh database.'
             },
             { 
               id: 5, 
-              file: 'config.py', 
-              issue: 'Debug Mode Enabled', 
-              severity: 'Low',
-              currentCode: `DEBUG = True`,
-              fixedCode: `DEBUG = os.environ.get("DEBUG", "false").lower() == "true"`,
+              file: 'utils/payment.js', 
+              issue: 'Stripe API Key Hardcoded', 
+              severity: 'High',
+              currentCode: `const STRIPE_KEY = "sk_live_51ABC123xyz..."`,
+              fixedCode: `const STRIPE_KEY = process.env.STRIPE_SECRET_KEY`,
+              line: 12,
+              description: 'Stripe secret key terekspos! Hacker bisa melakukan transaksi ilegal.'
+            },
+            { 
+              id: 6, 
+              file: 'config/telegram.py', 
+              issue: 'Telegram Bot Token Exposed', 
+              severity: 'Medium',
+              currentCode: `BOT_TOKEN = "6789012345:AAHdqTcvZ..."`,
+              fixedCode: `BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")`,
               line: 5,
-              description: 'Debug mode should be disabled in production environments.'
+              description: 'Token Telegram bot terekspos. Bot bisa diambil alih oleh pihak lain.'
             }
           ])
-          setSummary({ critical: 2, high: 1, medium: 1, low: 1 })
-          setScannedFiles(47)
+          setSummary({ critical: 3, high: 2, medium: 1, low: 0 })
+          setScannedFiles(124)
           return 100
         }
         return prev + 2
@@ -491,44 +501,59 @@ export default function Phase1Page() {
 
                       {/* Code Diff - Before & After */}
                       <div className={styles.codeDiff}>
-                        {/* BEFORE - Vulnerable Code */}
+                        {/* BEFORE - Kode Lama (Berbahaya) */}
                         <div className={styles.diffBlock}>
                           <div className={styles.diffHeader}>
                             <span className={styles.diffLabel}>
-                              <span className={styles.diffIcon}>−</span>
-                              BEFORE
+                              <span className={styles.diffIcon}>✕</span>
+                              KODE LAMA
                             </span>
-                            <span className={styles.diffFile}>{selectedFinding.file}:{selectedFinding.line}</span>
+                            <span className={styles.diffBadgeDanger}>BERBAHAYA</span>
+                          </div>
+                          <div className={styles.diffFileInfo}>
+                            {selectedFinding.file} (line {selectedFinding.line})
                           </div>
                           <div className={styles.diffCode}>
-                            <div className={styles.diffLineNum}>{selectedFinding.line}</div>
                             <div className={styles.diffLineRemoved}>
-                              <span className={styles.diffMinus}>−</span>
-                              <code>{selectedFinding.currentCode}</code>
+                              {selectedFinding.currentCode.split('\n').map((line, i) => (
+                                <div key={i} className={styles.diffLineContent}>
+                                  <span className={styles.diffLineNum}>{selectedFinding.line + i}</span>
+                                  <span className={styles.diffMinus}>−</span>
+                                  <code>{line}</code>
+                                </div>
+                              ))}
                             </div>
                           </div>
                         </div>
 
                         {/* Arrow Indicator */}
                         <div className={styles.diffArrow}>
-                          <span>↓</span>
-                          <span className={styles.diffArrowLabel}>AEGIS FIX</span>
+                          <div className={styles.diffArrowLine}></div>
+                          <span className={styles.diffArrowIcon}>▼</span>
+                          <span className={styles.diffArrowLabel}>AEGIS AUTO-FIX</span>
                         </div>
 
-                        {/* AFTER - Fixed Code */}
+                        {/* AFTER - Kode Baru (Aman) */}
                         <div className={styles.diffBlock}>
                           <div className={styles.diffHeaderFixed}>
                             <span className={styles.diffLabel}>
-                              <span className={styles.diffIconAdd}>+</span>
-                              AFTER
+                              <span className={styles.diffIconAdd}>✓</span>
+                              KODE BARU
                             </span>
-                            <span className={styles.diffFile}>{selectedFinding.file}:{selectedFinding.line}</span>
+                            <span className={styles.diffBadgeSafe}>100% AMAN - SIAP ACC</span>
+                          </div>
+                          <div className={styles.diffFileInfo}>
+                            {selectedFinding.file} (line {selectedFinding.line})
                           </div>
                           <div className={styles.diffCode}>
-                            <div className={styles.diffLineNum}>{selectedFinding.line}</div>
                             <div className={styles.diffLineAdded}>
-                              <span className={styles.diffPlus}>+</span>
-                              <code>{selectedFinding.fixedCode}</code>
+                              {selectedFinding.fixedCode.split('\n').map((line, i) => (
+                                <div key={i} className={styles.diffLineContent}>
+                                  <span className={styles.diffLineNum}>{selectedFinding.line + i}</span>
+                                  <span className={styles.diffPlus}>+</span>
+                                  <code>{line}</code>
+                                </div>
+                              ))}
                             </div>
                           </div>
                         </div>
