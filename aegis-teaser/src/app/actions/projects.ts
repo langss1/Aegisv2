@@ -105,3 +105,17 @@ export async function getRecentRuns() {
   }
   return data
 }
+
+export async function getReports() {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('security_runs')
+    .select('*, projects(name)')
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    console.error('Error fetching reports:', error)
+    return []
+  }
+  return data
+}
