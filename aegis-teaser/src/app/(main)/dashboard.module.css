@@ -238,15 +238,27 @@
   border: 1px solid #27272a;
 }
 
+.userMeta {
+  overflow: hidden;
+  max-width: 140px;
+}
+
 .userMeta strong {
   display: block;
   font-size: 13px;
   color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .userMeta span {
+  display: block;
   font-size: 11px;
   color: #3f3f46;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Main Content Area */
