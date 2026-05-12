@@ -1,58 +1,61 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from "next/server";
+import { sendMessage, getChatId, buildHealingMessage, buildHealingKeyboard } from "@/lib/telegram";
+import { registerHealing, getHealing } from "@/lib/healingState";
 
-const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || ''
-const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID || ''
-
-export async function POST(request: NextRequest) {
+export async function POST(req: NextRequest) {
   try {
-    const body = await request.json()
-    const { type, projectName, findings, summary, repoUrl, sessionId, pentestResults } = body
+    const body = await req.json();
+    const chatId = getChatId();
 
-    if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
-      return NextResponse.json({ success: false, message: 'Telegram not configured' })
+    if (!chatId) {
+      return NextResponse.json(
+        { error: "TELEGRAM_CHAT_ID not configured. Call /api/telegram/setup first." },
+        { status: 400 },
+      );
     }
 
-    let text = ''
-    let replyMarkup = null
+    const { type, payload } = body;
 
-    switch (type) {
-      case 'scan_start':
-        text = 'Security Scan Started for ' + projectName
-        break
-      case 'phase1_complete':
-        text = 'Phase 1 Complete: ' + findings + ' vulnerabilities found'
-        break
-      case 'phase2_complete':
-        text = 'Phase 2 Complete: Pentest finished'
-        break
-      case 'phase3_complete':
-        text = 'Phase 3 Complete: Approval Required for ' + projectName
-        replyMarkup = {
-          inline_keyboard: [[
-            { text: 'Approve', callback_data: 'approve_' + sessionId },
-            { text: 'Reject', callback_data: 'reject_' + sessionId }
-          ]]
-        }
-        break
-      case 'attack_blocked':
-        text = 'Attack Blocked: ' + body.attackType + ' on ' + body.endpoint
-        break
-      default:
-        text = body.message || 'AEGIS Notification'
+    if (type === "healing") {
+      const text = buildHealingMessage(payload);
+      const keyboard = buildHealingKeyboard(payload.id);
+      const result = await sendMessage(chatId, text, keyboard);
+
+      // Register healing in server-side store so Telegram callbacks can approve/reverse
+      if (!getHealing(payload.id)) {
+        registerHealing({
+          id: payload.id,
+          attackType: payload.attackType,
+          severity: payload.severity,
+          sourceIp: payload.sourceIp || "unknown",
+          targetEndpoint: payload.targetEndpoint || "unknown",
+          method: payload.method || "GET",
+          payload: payload.payload || "",
+          patch: payload.patch,
+          wafRuleId: payload.wafRuleId,
+          status: "Applied",
+          appliedAt: payload.appliedAt || Date.now(),
+          reverseDeadline: payload.reverseDeadline || Date.now() + 30 * 60 * 1000,
+        });
+      }
+
+      return NextResponse.json({ ok: true, result });
     }
 
-    const payload: any = { chat_id: TELEGRAM_CHAT_ID, text, parse_mode: 'Markdown' }
-    if (replyMarkup) payload.reply_markup = replyMarkup
+    if (type === "alert") {
+      const text = `⚠️ <b>AEGIS Alert</b>\n\n<b>Type:</b> ${payload.attackType || payload.type}\n<b>Severity:</b> ${payload.severity}\n<b>Source:</b> <code>${payload.sourceIp}</code>\n<b>Target:</b> <code>${payload.targetEndpoint}</code>\n<b>Payload:</b> <code>${payload.payloadSnippet}</code>`;
+      const result = await sendMessage(chatId, text);
+      return NextResponse.json({ ok: true, result });
+    }
 
-    const response = await fetch('https://api.telegram.org/bot' + TELEGRAM_BOT_TOKEN + '/sendMessage', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    })
+    if (type === "log") {
+      const text = `📋 <b>AEGIS Log</b>\n\n${payload.message || payload.msg}`;
+      const result = await sendMessage(chatId, text);
+      return NextResponse.json({ ok: true, result });
+    }
 
-    const data = await response.json()
-    return NextResponse.json({ success: data.ok, messageId: data.result?.message_id })
-  } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 })
+    return NextResponse.json({ error: "Unknown type. Use: healing, alert, or log" }, { status: 400 });
+  } catch (err) {
+    return NextResponse.json({ error: String(err) }, { status: 500 });
   }
 }
