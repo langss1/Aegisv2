@@ -18,11 +18,12 @@ export async function POST(request: NextRequest) {
       const chatId = body.callback_query.message.chat.id
       const messageId = body.callback_query.message.message_id
       
-      const [action, sessionId] = callbackData.split('_')
+      // Parse callback data - format is "action:sessionId" (e.g. "approve_push:session_123")
+      const [action, sessionId] = callbackData.split(':')
       
       const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN
       
-      if (action === 'approve') {
+      if (action === 'approve_push') {
         // Update approval status
         const approval = pendingApprovals.get(sessionId)
         if (approval) {
@@ -52,7 +53,7 @@ export async function POST(request: NextRequest) {
           })
         })
         
-      } else if (action === 'reject') {
+      } else if (action === 'reject_push') {
         const approval = pendingApprovals.get(sessionId)
         if (approval) {
           approval.status = 'rejected'
@@ -78,6 +79,71 @@ export async function POST(request: NextRequest) {
             text: 'Changes rejected.'
           })
         })
+      } else if (action === 'approve' || action === 'revert' || action === 'autofix') {
+        // Handle healing actions (approve, revert, autofix)
+        const healingId = sessionId
+        
+        if (action === 'approve') {
+          await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: chatId,
+              message_id: messageId,
+              text: `✅ <b>Healing Approved</b>\n\nSecurity patch has been permanently applied.\n\nHealing ID: <code>${healingId}</code>`,
+              parse_mode: 'HTML'
+            })
+          })
+          
+          await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              callback_query_id: body.callback_query.id,
+              text: 'Healing approved!'
+            })
+          })
+        } else if (action === 'revert') {
+          await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: chatId,
+              message_id: messageId,
+              text: `🔄 <b>Healing Reverted</b>\n\nSecurity patch has been rolled back.\n\nHealing ID: <code>${healingId}</code>`,
+              parse_mode: 'HTML'
+            })
+          })
+          
+          await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              callback_query_id: body.callback_query.id,
+              text: 'Healing reverted!'
+            })
+          })
+        } else if (action === 'autofix') {
+          await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: chatId,
+              message_id: messageId,
+              text: `🔧 <b>Auto-Fix Initiated</b>\n\nAnalyzing source code for vulnerabilities...\n\nHealing ID: <code>${healingId}</code>`,
+              parse_mode: 'HTML'
+            })
+          })
+          
+          await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              callback_query_id: body.callback_query.id,
+              text: 'Auto-fix started...'
+            })
+          })
+        }
       }
     }
     

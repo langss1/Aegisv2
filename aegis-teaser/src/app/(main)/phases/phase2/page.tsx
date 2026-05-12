@@ -5,7 +5,7 @@ import styles from './phase2.module.css'
 import { motion, AnimatePresence } from 'framer-motion'
 
 interface DeploymentState {
-  status: 'idle' | 'cloning' | 'installing' | 'starting' | 'tunneling' | 'deployed' | 'testing' | 'complete' | 'error'
+  status: 'idle' | 'cloning' | 'installing' | 'starting' | 'tunneling' | 'deployed' | 'testing' | 'complete' | 'fixing' | 'fixed'
   ngrokUrl: string | null
   logs: string[]
   progress: number
@@ -17,8 +17,12 @@ interface PentestResult {
   name: string
   endpoint: string
   severity: 'Critical' | 'High' | 'Medium' | 'Low'
-  status: 'passed' | 'failed' | 'vulnerable'
+  status: 'passed' | 'failed' | 'vulnerable' | 'fixed'
   description: string
+  file: string
+  line: number
+  vulnerableCode: string
+  fixedCode: string
 }
 
 export default function Phase2Page() {
@@ -31,6 +35,8 @@ export default function Phase2Page() {
   })
   const [pentestResults, setPentestResults] = useState<PentestResult[]>([])
   const [currentTest, setCurrentTest] = useState<string | null>(null)
+  const [selectedVuln, setSelectedVuln] = useState<PentestResult | null>(null)
+  const [fixingId, setFixingId] = useState<number | null>(null)
   const terminalRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
 
@@ -46,14 +52,12 @@ export default function Phase2Page() {
     }, 100)
   }
 
-  // Get repo context from localStorage
   useEffect(() => {
     const contextStr = localStorage.getItem('aegis_scan_context')
     if (contextStr) {
       const context = JSON.parse(contextStr)
       startDeployment(context.repoUrl, context.repoName)
     } else {
-      // Demo mode
       startDemoDeployment()
     }
   }, [])
@@ -85,7 +89,6 @@ export default function Phase2Page() {
       }))
     }
 
-    // Set ngrok URL
     const sessionId = Math.random().toString(36).substring(2, 10)
     const ngrokUrl = `https://${sessionId}.ngrok-free.app`
     
@@ -98,7 +101,6 @@ export default function Phase2Page() {
       progress: 100
     }))
 
-    // Start pentest after deployment
     await new Promise(resolve => setTimeout(resolve, 1500))
     startPentest(ngrokUrl)
   }
@@ -110,22 +112,14 @@ export default function Phase2Page() {
     try {
       const sessionId = Math.random().toString(36).substring(2, 15)
       
-      // Call ngrok API
       const response = await fetch('/api/ngrok', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'deploy',
-          repoUrl,
-          sessionId
-        })
+        body: JSON.stringify({ action: 'deploy', repoUrl, sessionId })
       })
 
       const data = await response.json()
-
-      if (data.error) {
-        throw new Error(data.error)
-      }
+      if (data.error) throw new Error(data.error)
 
       addLog(`Deployed to: ${data.ngrokUrl}`)
       setDeployment(prev => ({
@@ -135,18 +129,11 @@ export default function Phase2Page() {
         progress: 100
       }))
 
-      // Start pentest
       await new Promise(resolve => setTimeout(resolve, 1500))
       startPentest(data.ngrokUrl)
 
     } catch (error: any) {
       addLog(`Error: ${error.message}`)
-      setDeployment(prev => ({
-        ...prev,
-        status: 'error',
-        error: error.message
-      }))
-      // Fallback to demo
       startDemoDeployment()
     }
   }
@@ -159,37 +146,186 @@ export default function Phase2Page() {
     addLog('═══════════════════════════════════════')
 
     const tests: PentestResult[] = [
-      { id: 1, name: 'SQL Injection', endpoint: '/api/login', severity: 'Critical', status: 'passed', description: 'Testing SQL injection on authentication endpoint' },
-      { id: 2, name: 'Cross-Site Scripting (XSS)', endpoint: '/search?q=', severity: 'Critical', status: 'vulnerable', description: 'Reflected XSS vulnerability detected' },
-      { id: 3, name: 'CSRF Token Validation', endpoint: '/settings/update', severity: 'High', status: 'vulnerable', description: 'Missing CSRF token on form submission' },
-      { id: 4, name: 'Broken Authentication', endpoint: '/api/session', severity: 'Critical', status: 'passed', description: 'Session management is properly implemented' },
-      { id: 5, name: 'Sensitive Data Exposure', endpoint: '/api/users', severity: 'High', status: 'passed', description: 'PII data is properly encrypted' },
-      { id: 6, name: 'Security Headers', endpoint: '/', severity: 'Medium', status: 'vulnerable', description: 'Missing HSTS and X-Frame-Options headers' },
-      { id: 7, name: 'Directory Traversal', endpoint: '/files/', severity: 'High', status: 'passed', description: 'Path traversal attempts blocked' },
-      { id: 8, name: 'Rate Limiting', endpoint: '/api/login', severity: 'Medium', status: 'vulnerable', description: 'No rate limiting detected on login endpoint' },
+      { 
+        id: 1, 
+        name: 'SQL Injection', 
+        endpoint: '/api/login', 
+        severity: 'Critical', 
+        status: 'passed', 
+        description: 'SQL injection test passed',
+        file: 'api/login.js',
+        line: 15,
+        vulnerableCode: '',
+        fixedCode: ''
+      },
+      { 
+        id: 2, 
+        name: 'Cross-Site Scripting (XSS)', 
+        endpoint: '/search?q=', 
+        severity: 'Critical', 
+        status: 'vulnerable', 
+        description: 'Reflected XSS - User input tidak di-sanitize',
+        file: 'pages/search.js',
+        line: 23,
+        vulnerableCode: `// VULNERABLE CODE
+const query = req.query.q;
+res.send(\`<h1>Results for: \${query}</h1>\`);`,
+        fixedCode: `// FIXED CODE - Input sanitized
+const sanitizeHtml = require('sanitize-html');
+const query = sanitizeHtml(req.query.q);
+res.send(\`<h1>Results for: \${query}</h1>\`);`
+      },
+      { 
+        id: 3, 
+        name: 'CSRF Token Missing', 
+        endpoint: '/settings/update', 
+        severity: 'High', 
+        status: 'vulnerable', 
+        description: 'Form tidak memiliki CSRF token protection',
+        file: 'pages/settings.js',
+        line: 45,
+        vulnerableCode: `// VULNERABLE - No CSRF token
+app.post('/settings/update', (req, res) => {
+  updateSettings(req.body);
+  res.json({ success: true });
+});`,
+        fixedCode: `// FIXED - CSRF token validation
+const csrf = require('csurf');
+app.use(csrf({ cookie: true }));
+
+app.post('/settings/update', (req, res) => {
+  updateSettings(req.body);
+  res.json({ success: true });
+});`
+      },
+      { 
+        id: 4, 
+        name: 'Broken Authentication', 
+        endpoint: '/api/session', 
+        severity: 'Critical', 
+        status: 'passed', 
+        description: 'Session management properly implemented',
+        file: '',
+        line: 0,
+        vulnerableCode: '',
+        fixedCode: ''
+      },
+      { 
+        id: 5, 
+        name: 'Security Headers Missing', 
+        endpoint: '/', 
+        severity: 'Medium', 
+        status: 'vulnerable', 
+        description: 'Missing HSTS, X-Frame-Options, CSP headers',
+        file: 'server.js',
+        line: 12,
+        vulnerableCode: `// VULNERABLE - No security headers
+const app = express();
+app.use(express.json());
+
+app.listen(3000);`,
+        fixedCode: `// FIXED - Security headers added
+const helmet = require('helmet');
+const app = express();
+
+app.use(helmet());
+app.use(helmet.hsts({ maxAge: 31536000 }));
+app.use(helmet.frameguard({ action: 'deny' }));
+app.use(express.json());
+
+app.listen(3000);`
+      },
+      { 
+        id: 6, 
+        name: 'Rate Limiting', 
+        endpoint: '/api/login', 
+        severity: 'Medium', 
+        status: 'vulnerable', 
+        description: 'No rate limiting - vulnerable to brute force',
+        file: 'api/login.js',
+        line: 8,
+        vulnerableCode: `// VULNERABLE - No rate limiting
+app.post('/api/login', async (req, res) => {
+  const { email, password } = req.body;
+  const user = await authenticate(email, password);
+  res.json(user);
+});`,
+        fixedCode: `// FIXED - Rate limiting added
+const rateLimit = require('express-rate-limit');
+
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // 5 attempts
+  message: 'Too many login attempts'
+});
+
+app.post('/api/login', loginLimiter, async (req, res) => {
+  const { email, password } = req.body;
+  const user = await authenticate(email, password);
+  res.json(user);
+});`
+      },
     ]
 
     for (let i = 0; i < tests.length; i++) {
       const test = tests[i]
       setCurrentTest(test.name)
-      
       await new Promise(resolve => setTimeout(resolve, 600))
       
-      const statusIcon = test.status === 'passed' ? '✓' : test.status === 'vulnerable' ? '✗' : '○'
-      const statusColor = test.status === 'passed' ? 'PASS' : test.status === 'vulnerable' ? 'VULN' : 'SKIP'
-      
+      const statusColor = test.status === 'passed' ? 'PASS' : 'VULN'
       addLog(`[${statusColor}] ${test.name} → ${test.endpoint}`)
-      
       setPentestResults(prev => [...prev, test])
     }
 
     await new Promise(resolve => setTimeout(resolve, 500))
+    const vulnCount = tests.filter(t => t.status === 'vulnerable').length
     addLog('═══════════════════════════════════════')
-    addLog('PENTEST COMPLETE - 4 vulnerabilities found')
+    addLog(`PENTEST COMPLETE - ${vulnCount} vulnerabilities found`)
     addLog('═══════════════════════════════════════')
     
     setCurrentTest(null)
     setDeployment(prev => ({ ...prev, status: 'complete' }))
+  }
+
+  const handleFixVulnerability = async (vuln: PentestResult) => {
+    setFixingId(vuln.id)
+    addLog(`[FIX] Applying patch for ${vuln.name}...`)
+    
+    await new Promise(resolve => setTimeout(resolve, 1500))
+    
+    setPentestResults(prev => prev.map(r => 
+      r.id === vuln.id ? { ...r, status: 'fixed' as const } : r
+    ))
+    
+    addLog(`[FIX] ✓ ${vuln.name} patched successfully!`)
+    setFixingId(null)
+    setSelectedVuln(null)
+  }
+
+  const handleFixAll = async () => {
+    setDeployment(prev => ({ ...prev, status: 'fixing' }))
+    addLog('═══════════════════════════════════════')
+    addLog('AEGIS AUTO-FIX - Patching all vulnerabilities')
+    addLog('═══════════════════════════════════════')
+
+    const vulns = pentestResults.filter(r => r.status === 'vulnerable')
+    
+    for (const vuln of vulns) {
+      setFixingId(vuln.id)
+      addLog(`[FIX] Patching ${vuln.name}...`)
+      await new Promise(resolve => setTimeout(resolve, 800))
+      
+      setPentestResults(prev => prev.map(r => 
+        r.id === vuln.id ? { ...r, status: 'fixed' as const } : r
+      ))
+      addLog(`[FIX] ✓ ${vuln.file}:${vuln.line} - Fixed!`)
+    }
+
+    setFixingId(null)
+    addLog('═══════════════════════════════════════')
+    addLog('ALL VULNERABILITIES PATCHED!')
+    addLog('═══════════════════════════════════════')
+    setDeployment(prev => ({ ...prev, status: 'fixed' }))
   }
 
   const getStatusText = () => {
@@ -201,12 +337,14 @@ export default function Phase2Page() {
       case 'deployed': return 'Deployed!'
       case 'testing': return `Testing: ${currentTest || 'Initializing...'}`
       case 'complete': return 'Pentest Complete'
-      case 'error': return 'Error'
+      case 'fixing': return 'Applying Patches...'
+      case 'fixed': return 'All Fixed!'
       default: return 'Preparing...'
     }
   }
 
   const vulnerableCount = pentestResults.filter(r => r.status === 'vulnerable').length
+  const fixedCount = pentestResults.filter(r => r.status === 'fixed').length
   const passedCount = pentestResults.filter(r => r.status === 'passed').length
 
   return (
@@ -218,7 +356,6 @@ export default function Phase2Page() {
             <div className={styles.terminalHeader}>
               <div className={styles.dots}><span/><span/><span/></div>
               <span className={styles.termTitle}>aegis@deploy:~$ ./pentest.sh</span>
-              <div style={{ width: '20px' }}></div>
             </div>
             <div className={styles.terminalBody} ref={terminalRef}>
               {deployment.logs.map((line, i) => (
@@ -226,7 +363,8 @@ export default function Phase2Page() {
                   key={i} 
                   className={`${styles.logLine} ${
                     line.includes('VULN') ? styles.logVuln : 
-                    line.includes('PASS') ? styles.logPass : 
+                    line.includes('PASS') || line.includes('Fixed') || line.includes('✓') ? styles.logPass : 
+                    line.includes('FIX') ? styles.logFix :
                     line.includes('Error') ? styles.logError : ''
                   }`}
                 >
@@ -245,7 +383,7 @@ export default function Phase2Page() {
         {/* Right: Status & Results */}
         <div className={styles.statusArea}>
           <AnimatePresence mode="wait">
-            {deployment.status !== 'complete' ? (
+            {deployment.status !== 'complete' && deployment.status !== 'fixing' && deployment.status !== 'fixed' ? (
               <motion.div
                 key="deploying"
                 initial={{ opacity: 0 }}
@@ -253,42 +391,28 @@ export default function Phase2Page() {
                 exit={{ opacity: 0 }}
                 className={styles.statusCard}
               >
-                {/* Ngrok Logo/Icon */}
                 <div className={styles.ngrokBrand}>
                   <div className={styles.ngrokIcon}>🌐</div>
                   <span>ngrok</span>
                 </div>
 
-                {/* Status */}
                 <h2 className={styles.statusTitle}>{getStatusText()}</h2>
 
-                {/* Progress Bar */}
                 <div className={styles.progressContainer}>
                   <div className={styles.progressBar}>
                     <motion.div 
                       className={styles.progressFill}
                       initial={{ width: 0 }}
                       animate={{ width: `${deployment.progress}%` }}
-                      transition={{ duration: 0.3 }}
                     />
                   </div>
                   <span className={styles.progressText}>{deployment.progress}%</span>
                 </div>
 
-                {/* Ngrok URL Display */}
                 {deployment.ngrokUrl && (
-                  <motion.div 
-                    className={styles.ngrokUrlBox}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                  >
+                  <motion.div className={styles.ngrokUrlBox} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
                     <div className={styles.urlLabel}>PUBLIC URL</div>
-                    <a 
-                      href={deployment.ngrokUrl} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className={styles.ngrokUrl}
-                    >
+                    <a href={deployment.ngrokUrl} target="_blank" rel="noopener noreferrer" className={styles.ngrokUrl}>
                       {deployment.ngrokUrl}
                     </a>
                     <div className={styles.urlStatus}>
@@ -298,23 +422,64 @@ export default function Phase2Page() {
                   </motion.div>
                 )}
 
-                {/* Deployment Steps */}
                 <div className={styles.deploySteps}>
-                  {['Clone Repo', 'Install Deps', 'Start Server', 'Create Tunnel', 'Run Pentest'].map((step, i) => {
+                  {['Clone', 'Install', 'Start', 'Tunnel', 'Test'].map((step, i) => {
                     const stepNum = i + 1
                     const isActive = deployment.progress >= (stepNum * 20)
                     const isCurrent = deployment.progress >= ((stepNum - 1) * 20) && deployment.progress < (stepNum * 20)
-                    
                     return (
                       <div key={i} className={`${styles.step} ${isActive ? styles.stepDone : ''} ${isCurrent ? styles.stepActive : ''}`}>
-                        <div className={styles.stepIcon}>
-                          {isActive ? '✓' : stepNum}
-                        </div>
+                        <div className={styles.stepIcon}>{isActive ? '✓' : stepNum}</div>
                         <span>{step}</span>
                       </div>
                     )
                   })}
                 </div>
+              </motion.div>
+            ) : selectedVuln ? (
+              <motion.div
+                key="fix-detail"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className={styles.fixDetailCard}
+              >
+                <button className={styles.backBtn} onClick={() => setSelectedVuln(null)}>← Back</button>
+                
+                <div className={styles.fixHeader}>
+                  <span className={`${styles.sevBadge} ${styles[selectedVuln.severity.toLowerCase()]}`}>
+                    {selectedVuln.severity}
+                  </span>
+                  <h3>{selectedVuln.name}</h3>
+                  <p>{selectedVuln.description}</p>
+                  <div className={styles.fileInfo}>{selectedVuln.file}:{selectedVuln.line}</div>
+                </div>
+
+                <div className={styles.codeDiff}>
+                  <div className={styles.codeBlock}>
+                    <div className={styles.codeHeader + ' ' + styles.vulnerable}>
+                      <span>✕</span> KODE LAMA (VULNERABLE)
+                    </div>
+                    <pre className={styles.codeContent}>{selectedVuln.vulnerableCode}</pre>
+                  </div>
+
+                  <div className={styles.diffArrow}>▼ AEGIS FIX</div>
+
+                  <div className={styles.codeBlock}>
+                    <div className={styles.codeHeader + ' ' + styles.fixed}>
+                      <span>✓</span> KODE BARU (100% AMAN)
+                    </div>
+                    <pre className={styles.codeContent}>{selectedVuln.fixedCode}</pre>
+                  </div>
+                </div>
+
+                <button 
+                  className={styles.applyFixBtn}
+                  onClick={() => handleFixVulnerability(selectedVuln)}
+                  disabled={fixingId === selectedVuln.id}
+                >
+                  {fixingId === selectedVuln.id ? 'Applying...' : 'Apply Fix'}
+                </button>
               </motion.div>
             ) : (
               <motion.div
@@ -324,49 +489,59 @@ export default function Phase2Page() {
                 className={styles.resultsCard}
               >
                 <div className={styles.resultsHeader}>
-                  <div className={styles.resultsBadge}>PENTEST COMPLETE</div>
+                  <div className={deployment.status === 'fixed' ? styles.resultsBadgeFixed : styles.resultsBadge}>
+                    {deployment.status === 'fixed' ? 'ALL FIXED!' : 'PENTEST COMPLETE'}
+                  </div>
                   <h2>Security Assessment</h2>
                   <p>Target: {deployment.ngrokUrl}</p>
                 </div>
 
-                {/* Summary Stats */}
                 <div className={styles.statsRow}>
                   <div className={`${styles.statBox} ${styles.statVuln}`}>
                     <div className={styles.statNum}>{vulnerableCount}</div>
-                    <div className={styles.statLabel}>Vulnerabilities</div>
+                    <div className={styles.statLabel}>Vulnerable</div>
+                  </div>
+                  <div className={`${styles.statBox} ${styles.statFixed}`}>
+                    <div className={styles.statNum}>{fixedCount}</div>
+                    <div className={styles.statLabel}>Fixed</div>
                   </div>
                   <div className={`${styles.statBox} ${styles.statPass}`}>
                     <div className={styles.statNum}>{passedCount}</div>
                     <div className={styles.statLabel}>Passed</div>
                   </div>
-                  <div className={styles.statBox}>
-                    <div className={styles.statNum}>{pentestResults.length}</div>
-                    <div className={styles.statLabel}>Total Tests</div>
-                  </div>
                 </div>
 
-                {/* Vulnerabilities List */}
                 <div className={styles.vulnList}>
-                  {pentestResults.filter(r => r.status === 'vulnerable').map(result => (
-                    <div key={result.id} className={styles.vulnItem}>
+                  {pentestResults.filter(r => r.status === 'vulnerable' || r.status === 'fixed').map(result => (
+                    <div 
+                      key={result.id} 
+                      className={`${styles.vulnItem} ${result.status === 'fixed' ? styles.vulnFixed : ''}`}
+                      onClick={() => result.status === 'vulnerable' && setSelectedVuln(result)}
+                    >
                       <div className={styles.vulnHeader}>
-                        <span className={`${styles.sevBadge} ${styles[result.severity.toLowerCase()]}`}>
-                          {result.severity}
+                        <span className={`${styles.sevBadge} ${result.status === 'fixed' ? styles.fixedBadge : styles[result.severity.toLowerCase()]}`}>
+                          {result.status === 'fixed' ? '✓ FIXED' : result.severity}
                         </span>
                         <span className={styles.vulnEndpoint}>{result.endpoint}</span>
                       </div>
                       <div className={styles.vulnName}>{result.name}</div>
                       <div className={styles.vulnDesc}>{result.description}</div>
+                      {result.status === 'vulnerable' && (
+                        <button className={styles.viewFixBtn}>View & Fix →</button>
+                      )}
                     </div>
                   ))}
                 </div>
 
-                <button 
-                  onClick={() => router.push('/phases/phase3')} 
-                  className={styles.proceedBtn}
-                >
-                  Continue to Phase 3 - Auto Healing
-                </button>
+                {vulnerableCount > 0 ? (
+                  <button onClick={handleFixAll} className={styles.fixAllBtn} disabled={deployment.status === 'fixing'}>
+                    {deployment.status === 'fixing' ? 'Fixing...' : `Fix All ${vulnerableCount} Vulnerabilities`}
+                  </button>
+                ) : (
+                  <button onClick={() => router.push('/phases/phase3')} className={styles.proceedBtn}>
+                    Continue to Phase 3 - Monitoring
+                  </button>
+                )}
               </motion.div>
             )}
           </AnimatePresence>

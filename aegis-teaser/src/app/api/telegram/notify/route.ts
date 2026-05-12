@@ -54,7 +54,51 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true, result });
     }
 
-    return NextResponse.json({ error: "Unknown type. Use: healing, alert, or log" }, { status: 400 });
+    // Phase 3 completion with approval buttons
+    if (type === "phase3_complete") {
+      const { projectName, repoUrl, sessionId, summary } = body;
+      const text = `🛡 <b>AEGIS Security Pipeline Complete</b>
+
+<b>Project:</b> ${projectName}
+<b>Repository:</b> <code>${repoUrl || 'N/A'}</code>
+
+<b>📊 Summary:</b>
+• Source Code Issues: ${summary?.phase1 || 0}
+• Pentest Findings: ${summary?.phase2 || 0}
+• Patches Applied: ${summary?.fixed || 0}
+
+<b>Session:</b> <code>${sessionId}</code>
+
+⏱ Awaiting approval to push security patches to repository.`;
+
+      const keyboard = {
+        inline_keyboard: [
+          [
+            { text: "✅ Approve & Push", callback_data: `approve_push:${sessionId}` },
+            { text: "❌ Reject", callback_data: `reject_push:${sessionId}` },
+          ],
+        ],
+      };
+      const result = await sendMessage(chatId, text, keyboard);
+      return NextResponse.json({ ok: true, result });
+    }
+
+    // Attack blocked notification
+    if (type === "attack_blocked") {
+      const { attackType, endpoint, ip } = body;
+      const text = `🚨 <b>AEGIS WAF Alert</b>
+
+<b>Attack Blocked!</b>
+• Type: <code>${attackType}</code>
+• Endpoint: <code>${endpoint}</code>
+• Source IP: <code>${ip}</code>
+
+The malicious request has been blocked and logged.`;
+      const result = await sendMessage(chatId, text);
+      return NextResponse.json({ ok: true, result });
+    }
+
+    return NextResponse.json({ error: "Unknown type. Use: healing, alert, log, phase3_complete, or attack_blocked" }, { status: 400 });
   } catch (err) {
     return NextResponse.json({ error: String(err) }, { status: 500 });
   }
