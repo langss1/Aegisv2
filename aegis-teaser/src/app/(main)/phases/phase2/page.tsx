@@ -456,7 +456,7 @@ export default function Phase2Page() {
                     <button 
                       onClick={() => {
                         setDeployment(prev => ({ ...prev, status: 'idle', error: null, logs: [] }))
-                        setShowRepoInput(true)
+                        setShowInput(true)
                       }}
                       className={styles.retryBtn}
                     >
