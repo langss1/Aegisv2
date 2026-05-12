@@ -1,5 +1,5 @@
 'use client'
-import styles from './dashboard.module.css'
+import styles from '../dashboard.module.css'
 
 export default function DashboardPage() {
   const stats = [
@@ -9,10 +9,10 @@ export default function DashboardPage() {
   ]
 
   const recentRuns = [
-    { name: 'aegis-core-backend', status: 'Healthy', score: 98, lastRun: '2h ago', pill: 'pillGreen' },
-    { name: 'payment-gateway-api', status: 'Vulnerable', score: 64, lastRun: '5h ago', pill: 'pillRed' },
-    { name: 'user-auth-service', status: 'Testing', score: 82, lastRun: '1d ago', pill: 'pillBlue' },
-    { name: 'customer-portal-v3', status: 'Healthy', score: 92, lastRun: '2d ago', pill: 'pillGreen' },
+    { name: 'aegis-core-backend', status: 'Healthy', score: 98, lastRun: '2h ago', pill: 'pillGreen', scoreColor: 'scoreGreen' },
+    { name: 'payment-gateway-api', status: 'Vulnerable', score: 64, lastRun: '5h ago', pill: 'pillRed', scoreColor: 'scoreAmber' },
+    { name: 'user-auth-service', status: 'Testing', score: 82, lastRun: '1d ago', pill: 'pillBlue', scoreColor: 'scoreGreen' },
+    { name: 'customer-portal-v3', status: 'Healthy', score: 92, lastRun: '2d ago', pill: 'pillGreen', scoreColor: 'scoreGreen' },
   ]
 
   return (
@@ -27,7 +27,7 @@ export default function DashboardPage() {
           <div key={idx} className={styles.card}>
             <div className={styles.cardLabel}>
               {stat.label}
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ opacity: 0.5 }}>
                 <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14 21 3"/>
               </svg>
             </div>
@@ -42,7 +42,7 @@ export default function DashboardPage() {
       <div className={styles.tableCard}>
         <div className={styles.cardHeader}>
           <h3>Recent Security Runs</h3>
-          <button className={styles.navLink} style={{ fontSize: '11px', padding: '4px 8px' }}>View All</button>
+          <button className={styles.viewAllBtn}>View All</button>
         </div>
         <table className={styles.table}>
           <thead>
@@ -56,21 +56,19 @@ export default function DashboardPage() {
           <tbody>
             {recentRuns.map((run, idx) => (
               <tr key={idx}>
-                <td style={{ fontWeight: 700, color: 'white' }}>{run.name}</td>
+                <td style={{ fontWeight: 700, color: '#fff' }}>{run.name}</td>
                 <td>
                   <span className={`${styles.statusPill} ${styles[run.pill]}`}>
                     {run.status}
                   </span>
                 </td>
                 <td>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <div style={{ width: '60px', height: '4px', background: '#27272a', borderRadius: '2px' }}>
-                      <div style={{ width: `${run.score}%`, height: '100%', background: run.score > 80 ? '#22c55e' : run.score > 60 ? '#f59e0b' : '#ef4444', borderRadius: '2px' }} />
-                    </div>
-                    <span style={{ fontWeight: 700 }}>{run.score}</span>
+                  <div className={styles.scoreTrack}>
+                    <div className={`${styles.scoreBar} ${styles[run.scoreColor]}`} style={{ width: `${run.score}%` }} />
                   </div>
+                  <span style={{ fontWeight: 800, color: '#fff', fontSize: '14px' }}>{run.score}</span>
                 </td>
-                <td style={{ color: '#71717a' }}>{run.lastRun}</td>
+                <td style={{ color: '#3f3f46' }}>{run.lastRun}</td>
               </tr>
             ))}
           </tbody>
