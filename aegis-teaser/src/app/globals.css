@@ -54,7 +54,7 @@
 html {
   scroll-behavior: smooth;
   font-size: 16px;
-  overflow: hidden; /* Strict no-scroll */
+  overflow-x: hidden;
 }
 
 body {
@@ -62,7 +62,7 @@ body {
   background-color: var(--bg-base);
   color: var(--text-primary);
   line-height: 1.6;
-  overflow: hidden; /* Strict no-scroll */
+  overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
 }
 
