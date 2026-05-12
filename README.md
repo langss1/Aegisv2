@@ -1,7 +1,7 @@
 # AEGIS — AI Security Analysis & Self-Healing Platform
 
 <div align="center">
-  <img src="diagram_website.png" width="700" alt="Diagram Website">
+  <img src="diagram_website.png" width="700" alt="Diagram Website" style="background-color: white; padding: 10px; border-radius: 8px;">
 </div>
 
 ## Struktur Menu & Halaman
