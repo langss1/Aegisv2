@@ -47,10 +47,15 @@ export async function signup(formData: FormData) {
 
 export async function signInWithGitHub() {
   const supabase = await createClient()
+  
+  // Deteksi URL secara dinamis dari ENV atau default
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+  const callbackUrl = `${siteUrl.replace(/\/$/, '')}/auth/callback`
+  
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'github',
     options: {
-      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/callback`,
+      redirectTo: callbackUrl,
       scopes: 'repo',
     },
   })
