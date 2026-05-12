@@ -11,65 +11,96 @@ export default function DashboardLayout({
   const pathname = usePathname()
 
   const navItems = [
-    { name: 'Dashboard', href: '/dashboard', group: 'Platform' },
-    { name: 'Projects', href: '/projects', group: 'Platform' },
-    { name: 'Reports', href: '/reports', group: 'Platform' },
-    { name: 'Phase 0: Ingestion', href: '/phases/phase0', group: 'Security Phases' },
-    { name: 'Phase 1: SAST & Heal', href: '/phases/phase1', group: 'Security Phases' },
-    { name: 'Phase 2: DAST', href: '/phases/phase2', group: 'Security Phases' },
-    { name: 'Phase 3: Monitor', href: '/phases/phase3', group: 'Security Phases' },
+    { name: 'Overview', href: '/dashboard', icon: '📊' },
+    { name: 'Projects', href: '/projects', icon: '📁' },
+    { name: 'Reports', href: '/reports', icon: '📜' },
+  ]
+
+  const securityPhases = [
+    { name: 'Ingestion', href: '/phases/phase0', phase: '0' },
+    { name: 'SAST & Heal', href: '/phases/phase1', phase: '1' },
+    { name: 'DAST', href: '/phases/phase2', phase: '2' },
+    { name: 'Monitor', href: '/phases/phase3', phase: '3' },
   ]
 
   return (
-    <div className={styles.container}>
-      <aside className={styles.sidebar}>
-        <Link href="/dashboard" className={styles.logo}>
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-            <path d="M12 2L3 7v10l9 5 9-5V7L12 2z" stroke="white" strokeWidth="1.5" fill="rgba(220,38,38,0.3)"/>
-          </svg>
-          <span>AEGIS</span>
-        </Link>
+    <div className={styles.appContainer}>
+      {/* Sidebar */}
+      <aside className={styles.sideNav}>
+        <div className={styles.navHeader}>
+          <Link href="/dashboard" className={styles.brand}>
+            <div className={styles.brandIcon}>A</div>
+            <span>AEGIS</span>
+          </Link>
+        </div>
 
-        <nav className={styles.nav}>
-          <div className={styles.navGroup}>
-            <div className={styles.navTitle}>Platform</div>
-            {navItems.filter(i => i.group === 'Platform').map(item => (
+        <div className={styles.navSections}>
+          <div className={styles.navSection}>
+            <label>Platform</label>
+            {navItems.map(item => (
               <Link 
                 key={item.href} 
                 href={item.href} 
-                className={pathname === item.href ? styles.navItemActive : styles.navItem}
+                className={pathname === item.href ? styles.activeNavItem : styles.navLink}
               >
+                <span className={styles.icon}>{item.icon}</span>
                 {item.name}
               </Link>
             ))}
           </div>
 
-          <div className={styles.navGroup}>
-            <div className={styles.navTitle}>Security Phases</div>
-            {navItems.filter(i => i.group === 'Security Phases').map(item => (
+          <div className={styles.navSection}>
+            <label>Security Pipeline</label>
+            {securityPhases.map(item => (
               <Link 
                 key={item.href} 
                 href={item.href} 
-                className={pathname === item.href ? styles.navItemActive : styles.navItem}
+                className={pathname === item.href ? styles.activeNavItem : styles.navLink}
               >
+                <span className={styles.phaseTag}>P{item.phase}</span>
                 {item.name}
               </Link>
             ))}
           </div>
-        </nav>
+        </div>
 
-        <div className={styles.user}>
-          <div className={styles.avatar}>D</div>
-          <div className={styles.userInfo}>
-            <div className={styles.userName}>Developer</div>
-            <div className={styles.userRole}>Security Pro</div>
+        <div className={styles.navFooter}>
+          <div className={styles.userBrief}>
+            <div className={styles.userAvatar}>G</div>
+            <div className={styles.userMeta}>
+              <strong>Gilang Wasi</strong>
+              <span>Security Architect</span>
+            </div>
           </div>
         </div>
       </aside>
 
-      <main className={styles.main}>
-        {children}
-      </main>
+      {/* Main Area */}
+      <div className={styles.viewContainer}>
+        {/* Top Header */}
+        <header className={styles.topBar}>
+          <div className={styles.searchBox}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
+            </svg>
+            <input type="text" placeholder="Search security runs..." />
+          </div>
+          <div className={styles.topActions}>
+            <div className={styles.notificationBtn}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>
+              </svg>
+              <span className={styles.badge} />
+            </div>
+            <button className={styles.primaryBtn}>+ New Scan</button>
+          </div>
+        </header>
+
+        {/* Dynamic Content */}
+        <main className={styles.mainContent}>
+          {children}
+        </main>
+      </div>
     </div>
   )
 }
