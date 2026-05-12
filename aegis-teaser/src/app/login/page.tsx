@@ -94,7 +94,7 @@ export default function LoginPage() {
 
           <div className={styles.messageBox}>
             <p>For you who prioritize security and data, your process is local in your computer device and personalized.</p>
-            <p className={styles.smallMsg}>Use in IDE or Antigravity Command</p>
+            <p className={styles.smallMsg}>Use in VS Code, IDE or CMD Command</p>
           </div>
 
           <div className={styles.commandCard}>
@@ -111,6 +111,11 @@ export default function LoginPage() {
           </div>
           
           <p className={styles.hintText}>Run the command to auto-download and configure AEGIS locally.</p>
+          <div className={styles.docsLinkWrap}>
+            <Link href="/docs" className={styles.docsLink}>
+              View Usage Documentation →
+            </Link>
+          </div>
         </div>
       </div>
 

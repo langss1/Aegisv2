@@ -255,6 +255,26 @@
   text-align: center;
 }
 
+.docsLinkWrap {
+  margin-top: 24px;
+  text-align: center;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  padding-top: 16px;
+}
+
+.docsLink {
+  color: #ef4444;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.docsLink:hover {
+  text-decoration: underline;
+  color: #f87171;
+}
+
 .spinner {
   width: 18px;
   height: 18px;
