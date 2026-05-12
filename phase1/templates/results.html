@@ -1,0 +1,31 @@
+<div class="animate-in">
+    <h3 style="margin-bottom: 1.5rem">Scan Results for: <span style="color: var(--primary)">{{ path }}</span></h3>
+    
+    {% if results %}
+    <table style="width: 100%; border-collapse: collapse; margin-top: 1rem">
+        <thead>
+            <tr style="border-bottom: 1px solid var(--border); text-align: left">
+                <th style="padding: 1rem; color: var(--text-dim)">FILE</th>
+                <th style="padding: 1rem; color: var(--text-dim)">VULNERABILITY</th>
+                <th style="padding: 1rem; color: var(--text-dim)">STATUS</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for res in results %}
+            <tr style="border-bottom: 1px solid var(--border)">
+                <td style="padding: 1rem">{{ res.file }}</td>
+                <td style="padding: 1rem">{{ res.issue }}</td>
+                <td style="padding: 1rem">
+                    <span class="severity-high">UNSECURED</span>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div style="text-align: center; padding: 2rem">
+        <p style="color: var(--success); font-size: 1.5rem">✅ Project is Secure</p>
+        <p style="color: var(--text-dim)">No vulnerabilities found in the specified path.</p>
+    </div>
+    {% endif %}
+</div>
