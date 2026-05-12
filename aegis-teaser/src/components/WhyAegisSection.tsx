@@ -1,139 +1,76 @@
 'use client'
-import { useEffect, useRef } from 'react'
 import styles from './WhyAegisSection.module.css'
+import { motion } from 'framer-motion'
 
-const PROBLEMS = [
+const CARDS = [
   {
-    icon: '⚠️',
-    stat: '78%',
-    title: 'Developer Tidak Paham Security',
-    desc: 'Studi OWASP 2024 menemukan bahwa 78% developer mengakui keamanan bukan prioritas utama saat coding — deadline lebih mendesak dari enkripsi.',
-    source: 'OWASP Developer Survey 2024',
-    color: '#ef4444',
+    title: 'Indonesia #1 Target Serangan',
+    desc: 'Menurut laporan BSSN 2024, Indonesia menempati peringkat pertama target anomali trafik siber di Asia Tenggara. Infrastruktur kita sangat rentan.',
+    date: 'Jan 20, 2025',
+    category: 'Market Risk',
+    visual: '🇮🇩'
   },
   {
-    icon: '🇮🇩',
-    stat: '#1',
-    title: 'Indonesia Negara Paling Rentan di Asia',
-    desc: 'Indonesia menempati posisi teratas sebagai negara dengan insiden kebocoran data terbanyak di Asia Tenggara, dengan lebih dari 200 juta data bocor sejak 2021.',
-    source: 'Surfshark Data Breach Report 2024',
-    color: '#f97316',
+    title: 'Budaya "Vibe Coding" Developer',
+    desc: 'Mayoritas developer fokus pada "vibe" dan kecepatan fitur tanpa memahami struktur keamanan kode, meninggalkan celah fatal bagi hacker.',
+    date: 'Dec 15, 2024',
+    category: 'Internal Gap',
+    visual: '⌨️'
   },
   {
-    icon: '⚖️',
-    stat: 'Rp 5M',
-    title: 'UU PDP: Denda Hingga Rp 5 Miliar',
-    desc: 'UU Perlindungan Data Pribadi (UU No. 27/2022) memberi ancaman denda hingga Rp 5 miliar + penjara 5 tahun bagi pelanggar. Siap menanggung risikonya?',
-    source: 'UU PDP No. 27 Tahun 2022',
-    color: '#a855f7',
+    title: 'Kerugian Hingga Miliaran Rupiah',
+    desc: 'Satu insiden kebocoran data di perusahaan Indonesia rata-rata memakan biaya miliaran Rupiah untuk recovery dan hilangnya kepercayaan publik.',
+    date: 'Nov 22, 2024',
+    category: 'Financial Loss',
+    visual: '💸'
   },
   {
-    icon: '⏰',
-    stat: '287 hari',
-    title: 'Rata-rata Waktu Deteksi Breach',
-    desc: 'Rata-rata perusahaan baru menyadari kebocoran data setelah 287 hari. Dalam kurun itu, data sudah tersebar luas di dark web.',
-    source: 'IBM Cost of a Data Breach 2024',
-    color: '#dc2626',
-  },
-  {
-    icon: '💸',
-    stat: '$4.45M',
-    title: 'Biaya Rata-rata Satu Kebocoran Data',
-    desc: 'Rata-rata kerugian global per insiden kebocoran data mencapai $4.45 juta USD — setara dengan membuang ribuan jam produktivitas tim.',
-    source: 'IBM Security Report 2024',
-    color: '#ec4899',
-  },
-  {
-    icon: '🛡️',
-    stat: '< 5%',
-    title: 'Tim dengan Security Pipeline Otomatis',
-    desc: 'Kurang dari 5% tim pengembang di Indonesia memiliki automated security pipeline yang terintegrasi dalam CI/CD mereka.',
-    source: 'BSSN Laporan Keamanan Siber 2023',
-    color: '#f43f5e',
-  },
+    title: 'Full Enforcement UU PDP 2024',
+    desc: 'Masa tenggang UU No. 27/2022 berakhir. Sekarang, kebocoran data adalah tindak pidana dengan denda administrasi hingga 2% pendapatan global.',
+    date: 'Oct 17, 2024',
+    category: 'Legal / Compliance',
+    visual: '⚖️'
+  }
 ]
 
 export default function WhyAegisSection() {
-  const cardsRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add(styles.visible)
-          }
-        })
-      },
-      { threshold: 0.1, rootMargin: '0px 0px -50px 0px' }
-    )
-
-    const cards = cardsRef.current?.querySelectorAll(`.${styles.card}`)
-    cards?.forEach((card) => observer.observe(card))
-
-    return () => observer.disconnect()
-  }, [])
-
   return (
     <section id="why" className={styles.section}>
-      {/* Top divider */}
-      <div className={styles.dividerTop} />
-
-      <div className="container">
+      <div className={styles.container}>
         <div className={styles.header}>
-          <div className={styles.label}>
-            <span className={styles.labelDot} />
-            The Problem
-          </div>
-          <h2 className={styles.title}>
-            Mengapa Security Harus Jadi <br />
-            <span className="gradient-text">Prioritas Pertama?</span>
-          </h2>
-          <p className={styles.subtitle}>
-            Fakta-fakta ini bukan sekadar statistik — mereka adalah krisis nyata yang mengancam produk, pengguna, dan bisnis Anda setiap hari.
-          </p>
+          <h2 className={styles.title}>The Security Crisis</h2>
+          <button className={styles.viewBlog}>View Analysis</button>
         </div>
 
-        <div className={styles.grid} ref={cardsRef}>
-          {PROBLEMS.map((p, i) => (
-            <div
-              key={p.title}
+        <div className={styles.grid}>
+          {CARDS.map((card, i) => (
+            <motion.div 
+              key={i} 
               className={styles.card}
-              style={{ animationDelay: `${i * 0.1}s` }}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.1 }}
+              viewport={{ once: true }}
             >
-              <div className={styles.cardTop}>
-                <span className={styles.icon}>{p.icon}</span>
-                <span className={styles.stat} style={{ color: p.color }}>{p.stat}</span>
+              <div className={styles.cardVisual}>
+                 <div className={styles.dotsOverlay} />
+                 <span className={styles.visualIcon}>{card.visual}</span>
+                 <div className={styles.cardTag}>{card.title.split(' ')[0]}</div>
               </div>
-              <div className={styles.cardGlow} style={{ background: `radial-gradient(ellipse at top left, ${p.color}20, transparent 60%)` }} />
-              <h3 className={styles.cardTitle}>{p.title}</h3>
-              <p className={styles.cardDesc}>{p.desc}</p>
-              <div className={styles.cardSource}>
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none">
-                  <path d="M13 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V9l-7-7z" stroke="currentColor" strokeWidth="1.5"/>
-                </svg>
-                {p.source}
+              <div className={styles.cardContent}>
+                 <h3 className={styles.cardTitle}>{card.title}</h3>
+                 <p className={styles.cardDesc}>{card.desc}</p>
+                 <div className={styles.cardMeta}>
+                    <span>{card.date}</span>
+                    <span className={styles.separator}>•</span>
+                    <span>{card.category}</span>
+                 </div>
+                 <button className={styles.readMore}>Read analysis <span>→</span></button>
               </div>
-            </div>
+            </motion.div>
           ))}
         </div>
-
-        {/* AEGIS solution callout */}
-        <div className={styles.solution}>
-          <div className={styles.solutionInner}>
-            <div className={styles.solutionIcon}>🛡️</div>
-            <div>
-              <h3 className={styles.solutionTitle}>AEGIS hadir sebagai solusi</h3>
-              <p className={styles.solutionText}>
-                Dengan tiga fase otomatis — SAST, DAST, dan Monitor — AEGIS memastikan developer bisa fokus pada produktivitas 
-                sementara AI bekerja di balik layar menjaga keamanan kode Anda 24/7.
-              </p>
-            </div>
-          </div>
-        </div>
       </div>
-
-      <div className={styles.dividerBottom} />
     </section>
   )
 }
