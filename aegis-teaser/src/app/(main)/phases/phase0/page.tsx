@@ -289,11 +289,11 @@ export default function Phase0Page() {
               <h1 style={{ marginBottom: '12px' }}>Confirm Tech Stack</h1>
               <p style={{ marginBottom: '40px' }}>Our agent identified these technologies. Adjust them for better scan accuracy.</p>
 
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', justifyContent: 'center', marginBottom: '32px' }}>
+              <div className={styles.stackContainer}>
                 {detectedStack.map((tech, i) => (
-                  <div key={i} style={{ background: 'rgba(220, 38, 38, 0.1)', border: '1px solid rgba(220, 38, 38, 0.3)', padding: '10px 20px', borderRadius: '12px', fontSize: '13px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div key={i} className={styles.techTag}>
                     {tech}
-                    <button onClick={() => removeTech(tech)} style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer', fontSize: '16px', fontWeight: 900 }}>×</button>
+                    <button onClick={() => removeTech(tech)} className={styles.removeBtn}>×</button>
                   </div>
                 ))}
               </div>

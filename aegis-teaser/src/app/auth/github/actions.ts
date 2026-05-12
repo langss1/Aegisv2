@@ -97,12 +97,25 @@ export async function analyzeGitHubRepo(repoFullName: string) {
     // 4. Language Percentage
     const langRes = await fetch(`https://api.github.com/repos/${repoFullName}/languages`, { headers })
     const languages = langRes.ok ? await langRes.json() : {}
-    Object.keys(languages).slice(0, 2).forEach(l => detected.push(l))
+    const topLangs = Object.keys(languages).slice(0, 2)
 
-    const finalStack = Array.from(new Set([...detected, ...architecture]))
+    // 5. Intelligent Deduplication
+    let finalStack = [...detected, ...architecture]
+    
+    // Jika sudah ada "TypeScript (Strict Mode)", jangan tampilkan "TypeScript" biasa lagi
+    if (finalStack.includes('TypeScript (Strict Mode Detected)')) {
+      finalStack = finalStack.filter(s => s !== 'TypeScript')
+    }
+
+    // Masukkan bahasa utama jika belum ada
+    topLangs.forEach(lang => {
+      if (!finalStack.some(s => s.toLowerCase().includes(lang.toLowerCase()))) {
+        finalStack.push(lang)
+      }
+    })
 
     return { 
-      stack: finalStack.length > 0 ? finalStack : ['Custom Architecture'],
+      stack: Array.from(new Set(finalStack)).filter(s => s !== 'CSS' && s !== 'HTML'), // Filter out noise
       isDetailed: true
     }
   } catch (err) {
