@@ -53,26 +53,26 @@ export async function analyzeGitHubRepo(repoFullName: string) {
     
     // 2. Neural Architecture Mapping Logic
     // Detect Next.js Router Type
-    if (files.some(f => f.startsWith('src/app') || f.startsWith('app/'))) {
+    if (files.some((f: string) => f.startsWith('src/app') || f.startsWith('app/'))) {
       detected.push('Next.js 14/15 (App Router)')
       architecture.push('Modern App-Directory Architecture')
-    } else if (files.some(f => f.startsWith('src/pages') || f.startsWith('pages/'))) {
+    } else if (files.some((f: string) => f.startsWith('src/pages') || f.startsWith('pages/'))) {
       detected.push('Next.js (Legacy Pages Router)')
       architecture.push('Classic Pages Architecture')
     }
 
     // Detect Logic Patterns
-    if (files.some(f => f.includes('actions/'))) architecture.push('Server Actions Pattern')
-    if (files.some(f => f.includes('middleware.ts'))) architecture.push('Edge Middleware Layer')
-    if (files.some(f => f.includes('hooks/'))) architecture.push('Custom React Hooks Layer')
-    if (files.some(f => f.includes('components/ui/'))) architecture.push('Atomic UI System (Shadcn/UI)')
+    if (files.some((f: string) => f.includes('actions/'))) architecture.push('Server Actions Pattern')
+    if (files.some((f: string) => f.includes('middleware.ts'))) architecture.push('Edge Middleware Layer')
+    if (files.some((f: string) => f.includes('hooks/'))) architecture.push('Custom React Hooks Layer')
+    if (files.some((f: string) => f.includes('components/ui/'))) architecture.push('Atomic UI System (Shadcn/UI)')
 
     // Detect Infrastructure (Extreme Detail)
-    if (files.some(f => f.includes('.github/workflows'))) detected.push('GitHub Actions CI/CD')
-    if (files.some(f => f.includes('docker-compose'))) detected.push('Multi-Container Docker')
-    if (files.some(f => f.includes('vercel.json'))) detected.push('Vercel Edge Deployment')
-    if (files.some(f => f.includes('fly.toml'))) detected.push('Fly.io Infrastructure')
-    if (files.some(f => f.includes('terraform/'))) detected.push('Terraform (IaC)')
+    if (files.some((f: string) => f.includes('.github/workflows'))) detected.push('GitHub Actions CI/CD')
+    if (files.some((f: string) => f.includes('docker-compose'))) detected.push('Multi-Container Docker')
+    if (files.some((f: string) => f.includes('vercel.json'))) detected.push('Vercel Edge Deployment')
+    if (files.some((f: string) => f.includes('fly.toml'))) detected.push('Fly.io Infrastructure')
+    if (files.some((f: string) => f.includes('terraform/'))) detected.push('Terraform (IaC)')
 
     // 3. Dependency Check (Read package.json if exists)
     const packageFile = treeData.tree.find((f: any) => f.path.endsWith('package.json'))
