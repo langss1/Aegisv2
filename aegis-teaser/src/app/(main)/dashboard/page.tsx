@@ -2,12 +2,37 @@
 export const dynamic = 'force-dynamic'
 import { useState, useEffect } from 'react'
 import styles from '../dashboard.module.css'
+import { createClient } from '@/utils/supabase/client'
 import { getDashboardStats, getRecentRuns } from '@/app/actions/projects'
+import { useSearchParams } from 'next/navigation'
 
 export default function DashboardPage() {
+  const supabase = createClient()
+  const searchParams = useSearchParams()
   const [dbStats, setDbStats] = useState<any>(null)
   const [recentRuns, setRecentRuns] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function checkCLIMode() {
+      const mode = searchParams.get('mode')
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) return
+
+      try {
+        const ping = await fetch('http://localhost:5732/ping').then(r => r.json())
+        if (ping.status === 'waiting' || mode === 'cli') {
+          const target = new URL('http://localhost:5732')
+          target.searchParams.set('token', session.access_token)
+          target.searchParams.set('email', session.user.email || '')
+          window.location.href = target.toString()
+        }
+      } catch (e) {
+        // No local terminal waiting
+      }
+    }
+    checkCLIMode()
+  }, [searchParams, supabase])
 
   useEffect(() => {
     async function loadData() {

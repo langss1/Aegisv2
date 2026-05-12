@@ -1,23 +1,48 @@
 'use client'
 export const dynamic = 'force-dynamic'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import styles from './login.module.css'
 import ParticleField from '@/components/ParticleField'
+import { createClient } from '@/utils/supabase/client'
 import { login, signInWithGitHub } from '../auth/actions'
 
 export default function LoginPage() {
+  const supabase = createClient()
   const [view, setView] = useState<'choice' | 'login'>('choice')
   const [loading, setLoading] = useState(false)
   const [copied, setCopied] = useState(false)
   const searchParams = useSearchParams()
   const error = searchParams.get('error')
   const message = searchParams.get('message')
+  const callback = searchParams.get('callback')
+  const mode = searchParams.get('mode')
+
+  useEffect(() => {
+    async function checkSession() {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) return
+
+      // Silent Handshake Logic: Probe for local terminal
+      try {
+        const ping = await fetch('http://localhost:5732/ping').then(r => r.json())
+        if (ping.status === 'waiting' || mode === 'cli') {
+          const target = new URL('http://localhost:5732')
+          target.searchParams.set('token', session.access_token)
+          target.searchParams.set('email', session.user.email || '')
+          window.location.href = target.toString()
+        }
+      } catch (e) {
+        // No local terminal waiting, continue normal web flow
+      }
+    }
+    checkSession()
+  }, [mode, supabase])
 
   const handleGitHubLogin = async () => {
     setLoading(true)
-    await signInWithGitHub()
+    await signInWithGitHub(callback || undefined)
   }
 
   const copyCommand = () => {
@@ -122,6 +147,8 @@ export default function LoginPage() {
               {message && <div className={styles.successMessage}>{message}</div>}
 
               <form action={login} className={styles.form}>
+                <input type="hidden" name="callback" value={callback || ''} />
+                <input type="hidden" name="mode" value={mode || ''} />
                 <div className={styles.inputGroup}>
                   <label htmlFor="email">Email Address</label>
                   <input name="email" id="email" type="email" placeholder="name@company.com" required />

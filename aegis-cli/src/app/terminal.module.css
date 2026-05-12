@@ -85,6 +85,14 @@
   color: #fff;
 }
 
+.headerPath {
+  color: #3f3f46;
+  font-size: 11px;
+  margin-left: 10px;
+  font-weight: 400;
+  opacity: 0.8;
+}
+
 .headerStatus {
   display: flex;
   align-items: center;
