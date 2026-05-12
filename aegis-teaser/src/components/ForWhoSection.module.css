@@ -2,7 +2,7 @@
   position: relative;
   z-index: 2;
   padding: 100px 0;
-  background: white;
+  background: #0a0101;
 }
 
 .header { text-align: center; margin-bottom: 48px; }
@@ -11,14 +11,14 @@
   font-family: var(--font-heading);
   font-size: clamp(32px, 4.5vw, 52px);
   font-weight: 800;
-  color: #0f172a;
+  color: #ffffff;
   margin-bottom: 16px;
 }
 
 .subtitle {
   font-family: var(--font-poppins);
   font-size: 17px;
-  color: #64748b;
+  color: rgba(255, 255, 255, 0.5);
   max-width: 500px;
   margin: 0 auto;
 }
@@ -33,9 +33,9 @@
 .tab {
   padding: 10px 24px;
   border-radius: 999px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid rgba(255, 0, 0, 0.1);
   background: transparent;
-  color: #64748b;
+  color: rgba(255, 255, 255, 0.4);
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
@@ -43,9 +43,10 @@
 }
 
 .tabActive {
-  background: #0f172a;
+  background: #ff0000;
   color: white;
-  border-color: #0f172a;
+  border-color: #ff0000;
+  box-shadow: 0 0 20px rgba(255, 0, 0, 0.3);
 }
 
 .panel {
@@ -53,8 +54,8 @@
   grid-template-columns: 1fr 380px;
   gap: 48px;
   padding: 48px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  background: #0d0101;
+  border: 1px solid rgba(255, 0, 0, 0.1);
   border-radius: 32px;
 }
 
@@ -62,14 +63,14 @@
   font-family: var(--font-heading);
   font-size: 32px;
   font-weight: 800;
-  color: #0f172a;
+  color: #ffffff;
   margin-bottom: 16px;
 }
 
 .panelDesc {
   font-family: var(--font-poppins);
   font-size: 16px;
-  color: #475569;
+  color: rgba(255, 255, 255, 0.6);
   line-height: 1.6;
   margin-bottom: 32px;
 }

@@ -11,9 +11,9 @@
 
 .navbar.scrolled {
   padding: 16px 0;
-  background: rgba(255, 255, 255, 0.8);
+  background: rgba(3, 0, 0, 0.85);
   backdrop-filter: blur(20px);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  border-bottom: 1px solid rgba(255, 0, 0, 0.1);
 }
 
 .inner {
@@ -35,12 +35,13 @@
 .logoIcon {
   width: 32px;
   height: 32px;
-  background: #0f172a;
+  background: #ff0000;
   border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: transform 0.3s ease;
+  box-shadow: 0 0 15px rgba(255, 0, 0, 0.4);
 }
 
 .logo:hover .logoIcon { transform: scale(1.05); }
@@ -49,7 +50,7 @@
   font-family: var(--font-heading);
   font-size: 18px;
   font-weight: 800;
-  color: #0f172a;
+  color: #ffffff;
   letter-spacing: 1px;
 }
 
@@ -61,7 +62,7 @@
 
 .navLinks a {
   padding: 8px 16px;
-  color: #64748b;
+  color: rgba(255, 255, 255, 0.6);
   text-decoration: none;
   font-size: 14px;
   font-weight: 500;
@@ -70,7 +71,7 @@
 }
 
 .navLinks a:hover {
-  color: #0f172a;
+  color: #ffffff;
 }
 
 .navActions {

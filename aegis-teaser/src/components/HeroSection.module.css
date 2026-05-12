@@ -4,7 +4,7 @@
   display: flex;
   align-items: center;
   padding: 120px 24px;
-  background: white;
+  background: #030000;
   overflow: hidden;
 }
 
@@ -27,19 +27,21 @@
   align-items: center;
   gap: 8px;
   padding: 6px 16px;
-  background: #f1f5f9;
+  background: rgba(220, 38, 38, 0.1);
+  border: 1px solid rgba(220, 38, 38, 0.2);
   border-radius: 999px;
   font-size: 13px;
   font-weight: 600;
-  color: #64748b;
+  color: #fca5a5;
   margin-bottom: 24px;
 }
 
 .badgeDot {
   width: 6px;
   height: 6px;
-  background: #dc2626;
+  background: #ff0000;
   border-radius: 50%;
+  box-shadow: 0 0 10px #ff0000;
 }
 
 .headline {
@@ -47,19 +49,14 @@
   font-size: clamp(40px, 5vw, 72px);
   font-weight: 800;
   line-height: 1.1;
-  color: #0f172a;
+  color: #ffffff;
   margin-bottom: 32px;
   min-height: 2.2em;
 }
 
 .cursor {
-  color: #dc2626;
+  color: #ff0000;
   animation: blink 0.8s step-end infinite;
-}
-
-@keyframes blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0; }
 }
 
 .revealContent {
@@ -76,7 +73,7 @@
 .subtext {
   font-family: var(--font-poppins);
   font-size: 18px;
-  color: #475569;
+  color: rgba(255, 255, 255, 0.6);
   max-width: 540px;
   line-height: 1.6;
   margin-bottom: 40px;
@@ -102,12 +99,12 @@
   font-family: var(--font-heading);
   font-size: 32px;
   font-weight: 800;
-  color: #0f172a;
+  color: #ffffff;
 }
 
 .statLabel {
   font-size: 13px;
-  color: #94a3b8;
+  color: rgba(255, 255, 255, 0.4);
   font-weight: 500;
 }
 
@@ -131,7 +128,7 @@
 }
 
 .shieldSvg {
-  filter: drop-shadow(0 20px 40px rgba(0,0,0,0.05));
+  filter: drop-shadow(0 0 40px rgba(220, 38, 38, 0.3));
 }
 
 .pulseCircle {
@@ -141,7 +138,7 @@
 
 @keyframes pulse {
   0%, 100% { transform: scale(1); opacity: 0.2; }
-  50% { transform: scale(1.1); opacity: 0.4; }
+  50% { transform: scale(1.1); opacity: 0.5; }
 }
 
 @media (max-width: 900px) {

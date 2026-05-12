@@ -9,27 +9,27 @@
 :root {
   --red-600: #dc2626;
   --red-500: #ef4444;
-  --red-accent: #dc2626;
+  --red-accent: #ff0000;
 
-  --bg-base: #ffffff;
-  --bg-surface: #f8fafc;
-  --bg-card: #ffffff;
-  --bg-glass: rgba(255, 255, 255, 0.8);
+  --bg-base: #030000;
+  --bg-surface: #0a0101;
+  --bg-card: #0d0101;
+  --bg-glass: rgba(127, 29, 29, 0.05);
 
-  --text-primary: #0f172a;
-  --text-secondary: #475569;
-  --text-muted: #94a3b8;
-  --text-accent: #dc2626;
+  --text-primary: #ffffff;
+  --text-secondary: rgba(255, 255, 255, 0.7);
+  --text-muted: rgba(255, 255, 255, 0.4);
+  --text-accent: #ff0000;
 
-  --border-subtle: rgba(0, 0, 0, 0.05);
-  --border-glow: rgba(220, 38, 38, 0.2);
+  --border-subtle: rgba(220, 38, 38, 0.1);
+  --border-glow: rgba(255, 0, 0, 0.2);
 
   --font-heading: 'Helvetica Neue', 'Helvetica', 'Arial', sans-serif;
   --font-poppins: var(--font-poppins);
   --font-body: 'Poppins', sans-serif;
 
-  --grad-text: linear-gradient(135deg, #0f172a 0%, #334155 100%);
-  --grad-primary: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  --grad-text: linear-gradient(135deg, #ffffff 0%, #ff8e8e 100%);
+  --grad-primary: linear-gradient(135deg, #ff0000 0%, #991b1b 100%);
 
   --radius-sm: 8px;
   --radius-md: 12px;
@@ -89,7 +89,7 @@ body {
   align-items: center;
   gap: 8px;
   padding: 14px 32px;
-  background: #0f172a;
+  background: #ff0000;
   color: white;
   font-weight: 600;
   font-size: 15px;
@@ -100,7 +100,7 @@ body {
   text-decoration: none;
 }
 
-.btn-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(15, 23, 42, 0.2); }
+.btn-primary:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(255, 0, 0, 0.4); }
 
 .btn-outline {
   display: inline-flex;
@@ -108,10 +108,10 @@ body {
   gap: 8px;
   padding: 13px 32px;
   background: transparent;
-  color: #0f172a;
+  color: white;
   font-weight: 600;
   font-size: 15px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: var(--radius-full);
   cursor: pointer;
   transition: all 0.3s ease;
@@ -119,7 +119,8 @@ body {
 }
 
 .btn-outline:hover {
-  background: #f1f5f9;
+  background: rgba(255, 255, 255, 0.05);
+  border-color: white;
   transform: translateY(-2px);
 }
 

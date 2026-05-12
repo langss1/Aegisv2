@@ -2,32 +2,33 @@
   position: relative;
   z-index: 2;
   padding: 100px 0;
-  background: white;
+  background: #030000;
 }
 
 .wrapper {
   position: relative;
   text-align: center;
   padding: 80px 40px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  background: #0d0101;
+  border: 1px solid rgba(255, 0, 0, 0.2);
   border-radius: 40px;
   max-width: 1000px;
   margin: 0 auto;
+  box-shadow: 0 0 50px rgba(255, 0, 0, 0.1);
 }
 
 .title {
   font-family: var(--font-heading);
   font-size: clamp(32px, 5.5vw, 64px);
   font-weight: 800;
-  color: #0f172a;
+  color: #ffffff;
   margin-bottom: 24px;
 }
 
 .desc {
   font-family: var(--font-poppins);
   font-size: 18px;
-  color: #475569;
+  color: rgba(255, 255, 255, 0.6);
   max-width: 600px;
   margin: 0 auto 40px;
   line-height: 1.6;
@@ -42,14 +43,16 @@
 .input {
   padding: 16px 24px;
   width: 320px;
-  background: white;
-  border: 1px solid #e2e8f0;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 999px;
   font-family: var(--font-poppins);
+  color: white;
 }
 
 .input:focus {
-  border-color: #0f172a;
+  border-color: #ff0000;
   outline: none;
+  background: rgba(255, 255, 255, 0.1);
 }
 

@@ -2,7 +2,7 @@
   position: relative;
   z-index: 2;
   padding: 100px 0;
-  background: #f8fafc;
+  background: #0a0101;
 }
 
 .header {
@@ -14,14 +14,14 @@
   font-family: var(--font-heading);
   font-size: clamp(32px, 4.5vw, 52px);
   font-weight: 800;
-  color: #0f172a;
+  color: #ffffff;
   margin-bottom: 16px;
 }
 
 .subtitle {
   font-family: var(--font-poppins);
   font-size: 17px;
-  color: #64748b;
+  color: rgba(255, 255, 255, 0.5);
   max-width: 520px;
   margin: 0 auto;
 }
@@ -34,30 +34,30 @@
 
 .card {
   padding: 40px;
-  background: white;
-  border: 1px solid #e2e8f0;
+  background: #0d0101;
+  border: 1px solid rgba(255, 0, 0, 0.1);
   border-radius: 24px;
   transition: all 0.3s ease;
 }
 
 .card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.05);
-  border-color: #cbd5e1;
+  box-shadow: 0 20px 40px rgba(255, 0, 0, 0.05);
+  border-color: rgba(255, 0, 0, 0.3);
 }
 
 .cardTitle {
   font-family: var(--font-heading);
   font-size: 20px;
   font-weight: 700;
-  color: #0f172a;
+  color: #ffffff;
   margin-bottom: 12px;
 }
 
 .cardDesc {
   font-family: var(--font-poppins);
   font-size: 15px;
-  color: #64748b;
+  color: rgba(255, 255, 255, 0.5);
   line-height: 1.6;
 }
 
