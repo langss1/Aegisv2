@@ -4,55 +4,40 @@ import { useRouter } from 'next/navigation'
 import styles from './phase2.module.css'
 import { motion, AnimatePresence } from 'framer-motion'
 
-interface DeploymentState {
-  status: 'idle' | 'deploying' | 'building' | 'deployed' | 'testing' | 'complete' | 'fixing' | 'fixed' | 'error'
-  deploymentUrl: string | null
-  deploymentId: string | null
-  logs: string[]
-  progress: number
-  error: string | null
-}
-
-interface PentestResult {
-  id: number
-  name: string
-  endpoint: string
-  severity: 'Critical' | 'High' | 'Medium' | 'Low'
-  status: 'passed' | 'failed' | 'vulnerable' | 'fixed'
-  description: string
+interface Vulnerability {
+  id: string
+  type: string
+  severity: 'critical' | 'high' | 'medium' | 'low'
   file: string
   line: number
-  vulnerableCode: string
+  code: string
+  description: string
+}
+
+interface FixSuggestion {
+  vulnerabilityId: string
+  originalCode: string
   fixedCode: string
+  explanation: string
+  confidence: number
+  status: 'pending' | 'loading' | 'ready' | 'applied' | 'skipped'
+}
+
+interface VulnWithFix extends Vulnerability {
+  fix?: FixSuggestion
 }
 
 export default function Phase2Page() {
-  const [deployment, setDeployment] = useState<DeploymentState>({
-    status: 'idle',
-    deploymentUrl: null,
-    deploymentId: null,
-    logs: [],
-    progress: 0,
-    error: null
-  })
-  const [pentestResults, setPentestResults] = useState<PentestResult[]>([])
-  const [currentTest, setCurrentTest] = useState<string | null>(null)
-  const [selectedVuln, setSelectedVuln] = useState<PentestResult | null>(null)
-  const [fixingId, setFixingId] = useState<number | null>(null)
-  const [targetUrl, setTargetUrl] = useState('')
-  const [repoUrl, setRepoUrl] = useState('')
-  const [showInput, setShowInput] = useState(false)
-  const [mode, setMode] = useState<'url' | 'repo'>('repo')
-  const [generatedCommand, setGeneratedCommand] = useState('')
-  const [copied, setCopied] = useState(false)
+  const [vulnerabilities, setVulnerabilities] = useState<VulnWithFix[]>([])
+  const [loading, setLoading] = useState(true)
+  const [selectedVuln, setSelectedVuln] = useState<VulnWithFix | null>(null)
+  const [applyingAll, setApplyingAll] = useState(false)
+  const [logs, setLogs] = useState<string[]>([])
   const terminalRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
 
   const addLog = (message: string) => {
-    setDeployment(prev => ({
-      ...prev,
-      logs: [...prev.logs, `[${new Date().toLocaleTimeString()}] ${message}`]
-    }))
+    setLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] ${message}`])
     setTimeout(() => {
       if (terminalRef.current) {
         terminalRef.current.scrollTop = terminalRef.current.scrollHeight
@@ -60,358 +45,249 @@ export default function Phase2Page() {
     }, 100)
   }
 
+  // Load vulnerabilities from Phase 1
   useEffect(() => {
-    // Always show input for direct URL
-    setShowInput(true)
-    addLog('AEGIS Pentest Engine Ready')
-    addLog('Enter target URL to begin security scan...')
+    loadVulnerabilities()
   }, [])
 
-  const [deployJobId, setDeployJobId] = useState<string | null>(null)
-  const [isDeploying, setIsDeploying] = useState(false)
+  const loadVulnerabilities = async () => {
+    addLog('AEGIS Auto-Fix Engine v2.0')
+    addLog('Loading vulnerabilities from Phase 1...')
 
-  const startOneClickDeploy = async () => {
-    if (!repoUrl.trim() || !repoUrl.includes('github.com')) {
-      addLog('ERROR: Please enter a valid GitHub URL')
-      return
-    }
-
-    setIsDeploying(true)
-    setShowInput(false)
-    setDeployment(prev => ({ ...prev, status: 'deploying', progress: 10 }))
-    addLog(`Starting one-click deployment...`)
-    addLog(`Repository: ${repoUrl}`)
-
-    try {
-      // Start deployment
-      const response = await fetch('/api/deploy', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'deploy', repoUrl })
-      })
-
-      const data = await response.json()
-
-      if (data.serverless) {
-        // Running on Vercel - fall back to manual
-        addLog('Running in cloud mode - manual deployment required')
-        setShowInput(true)
-        setIsDeploying(false)
-        setDeployment(prev => ({ ...prev, status: 'idle' }))
-        
-        // Generate command for manual use
-        const ngrokToken = '3DUQzokiv5uu7N0AbYEtEOlPtxw_2bvWYRxbBicG55VFVfmu'
-        const command = `git clone ${repoUrl} aegis-target && cd aegis-target && npm install && npm start & sleep 5 && ngrok config add-authtoken ${ngrokToken} && ngrok http 3000`
-        setGeneratedCommand(command)
-        return
-      }
-
-      if (!data.success) {
-        throw new Error(data.error || 'Deployment failed')
-      }
-
-      setDeployJobId(data.jobId)
-      addLog(`Job started: ${data.jobId}`)
-
-      // Poll for status
-      pollDeploymentStatus(data.jobId)
-
-    } catch (error: any) {
-      addLog(`ERROR: ${error.message}`)
-      setIsDeploying(false)
-      setShowInput(true)
-      setDeployment(prev => ({ ...prev, status: 'error', error: error.message }))
-    }
-  }
-
-  const pollDeploymentStatus = async (jobId: string) => {
-    const maxAttempts = 60
-    let attempts = 0
-
-    while (attempts < maxAttempts) {
-      await new Promise(r => setTimeout(r, 2000))
-
+    // Try to load from localStorage (from Phase 1)
+    const savedResults = localStorage.getItem('aegis_scan_results')
+    
+    if (savedResults) {
       try {
-        const res = await fetch(`/api/deploy?jobId=${jobId}`)
-        const job = await res.json()
-
-        // Update progress based on status
-        const statusProgress: Record<string, number> = {
-          'pending': 10,
-          'cloning': 25,
-          'installing': 50,
-          'starting': 70,
-          'tunneling': 85,
-          'ready': 100,
-          'error': 0
-        }
-
-        setDeployment(prev => ({
-          ...prev,
-          status: job.status === 'ready' ? 'deployed' : 'deploying',
-          progress: statusProgress[job.status] || 50
-        }))
-
-        // Log new messages
-        if (job.logs && job.logs.length > 0) {
-          const lastLog = job.logs[job.logs.length - 1]
-          addLog(lastLog)
-        }
-
-        if (job.status === 'ready' && job.ngrokUrl) {
-          addLog(`Deployment successful!`)
-          addLog(`Live URL: ${job.ngrokUrl}`)
-          setDeployment(prev => ({
-            ...prev,
-            status: 'deployed',
-            deploymentUrl: job.ngrokUrl,
-            progress: 100
-          }))
-          setTargetUrl(job.ngrokUrl)
-          setIsDeploying(false)
-
-          // Auto-start pentest
-          setTimeout(() => {
-            startPentest(job.ngrokUrl)
-          }, 1500)
+        const parsed = JSON.parse(savedResults)
+        const vulns = parsed.vulnerabilities || parsed
+        
+        if (Array.isArray(vulns) && vulns.length > 0) {
+          addLog(`Found ${vulns.length} vulnerabilities to fix`)
+          setVulnerabilities(vulns.map((v: any) => ({
+            ...v,
+            id: v.id || `vuln_${Math.random().toString(36).substr(2, 9)}`,
+            fix: { status: 'pending' } as FixSuggestion
+          })))
+          setLoading(false)
+          
+          // Generate fixes
+          setTimeout(() => generateAllFixes(vulns), 500)
           return
         }
-
-        if (job.status === 'error') {
-          throw new Error(job.error || 'Deployment failed')
-        }
-
-      } catch (e: any) {
-        if (e.message !== 'Deployment failed') {
-          console.error('Poll error:', e)
-        } else {
-          throw e
-        }
+      } catch (e) {
+        addLog('Error parsing saved results')
       }
-
-      attempts++
     }
 
-    throw new Error('Deployment timeout')
-  }
-
-  const copyCommand = () => {
-    navigator.clipboard.writeText(generatedCommand)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
-
-  const handleStartPentest = () => {
-    if (!targetUrl.trim()) return
-    
-    if (!targetUrl.startsWith('http')) {
-      addLog('ERROR: Please enter a valid URL (https://...)')
-      return
-    }
-    
-    setShowInput(false)
-    setGeneratedCommand('')
-    setDeployment(prev => ({ 
-      ...prev, 
-      status: 'deployed',
-      deploymentUrl: targetUrl,
-      progress: 100
-    }))
-    addLog(`Target: ${targetUrl}`)
-    addLog('Starting security scan...')
-    
-    setTimeout(() => {
-      startPentest(targetUrl)
-    }, 500)
-  }
-
-  const startPentest = async (targetUrl: string) => {
-    setDeployment(prev => ({ ...prev, status: 'testing' }))
-    addLog('═══════════════════════════════════════')
-    addLog('AEGIS PENTEST ENGINE v2.0 - LIVE SCAN')
-    addLog(`Target: ${targetUrl}`)
-    addLog('═══════════════════════════════════════')
-
-    const testNames = [
-      'SQL Injection',
-      'Cross-Site Scripting (XSS)',
-      'CSRF Token Missing',
-      'Security Headers',
-      'Rate Limiting',
-      'Open Redirect'
+    // Demo vulnerabilities if no real data
+    addLog('No scan data found, loading demo vulnerabilities...')
+    const demoVulns: VulnWithFix[] = [
+      {
+        id: 'vuln_1',
+        type: 'SQL Injection',
+        severity: 'critical',
+        file: 'src/api/users.ts',
+        line: 42,
+        code: 'const query = `SELECT * FROM users WHERE id = ${userId}`',
+        description: 'User input directly concatenated into SQL query',
+        fix: { status: 'pending' } as FixSuggestion
+      },
+      {
+        id: 'vuln_2',
+        type: 'XSS',
+        severity: 'high',
+        file: 'src/components/Comment.tsx',
+        line: 15,
+        code: '<div dangerouslySetInnerHTML={{ __html: userComment }} />',
+        description: 'User input rendered as HTML without sanitization',
+        fix: { status: 'pending' } as FixSuggestion
+      },
+      {
+        id: 'vuln_3',
+        type: 'Hardcoded Secret',
+        severity: 'critical',
+        file: 'src/lib/api.ts',
+        line: 8,
+        code: 'const API_KEY = "sk-1234567890abcdef"',
+        description: 'API key hardcoded in source code',
+        fix: { status: 'pending' } as FixSuggestion
+      },
+      {
+        id: 'vuln_4',
+        type: 'Missing Security Headers',
+        severity: 'medium',
+        file: 'next.config.js',
+        line: 1,
+        code: 'module.exports = { /* no security headers */ }',
+        description: 'No security headers configured (CSP, HSTS, etc)',
+        fix: { status: 'pending' } as FixSuggestion
+      },
+      {
+        id: 'vuln_5',
+        type: 'Insecure Random',
+        severity: 'medium',
+        file: 'src/utils/token.ts',
+        line: 5,
+        code: 'const token = Math.random().toString(36).substring(7)',
+        description: 'Using Math.random() for security-sensitive token generation',
+        fix: { status: 'pending' } as FixSuggestion
+      }
     ]
 
-    try {
-      // Show progress for each test
-      for (const testName of testNames) {
-        setCurrentTest(testName)
-        addLog(`[SCAN] Testing ${testName}...`)
-        await new Promise(resolve => setTimeout(resolve, 800))
-      }
+    setVulnerabilities(demoVulns)
+    setLoading(false)
+    
+    setTimeout(() => generateAllFixes(demoVulns), 500)
+  }
 
-      // Call real pentest API
-      addLog('[API] Sending payloads to target...')
-      const response = await fetch('/api/pentest', {
+  const generateAllFixes = async (vulns: Vulnerability[]) => {
+    addLog('═══════════════════════════════════════')
+    addLog('AI FIX GENERATION - Analyzing vulnerabilities...')
+    addLog('═══════════════════════════════════════')
+
+    for (const vuln of vulns) {
+      await generateFix(vuln)
+    }
+
+    addLog('═══════════════════════════════════════')
+    addLog('All fixes generated! Review and apply.')
+    addLog('═══════════════════════════════════════')
+  }
+
+  const generateFix = async (vuln: Vulnerability) => {
+    // Update status to loading
+    setVulnerabilities(prev => prev.map(v => 
+      v.id === vuln.id ? { ...v, fix: { ...v.fix, status: 'loading' } as FixSuggestion } : v
+    ))
+
+    addLog(`[AI] Generating fix for ${vuln.type}...`)
+
+    try {
+      const response = await fetch('/api/fix', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          targetUrl,
-          tests: ['sql', 'xss', 'csrf', 'headers', 'ratelimit', 'redirect']
+        body: JSON.stringify({
+          action: 'generate-fix',
+          vulnerability: vuln
         })
       })
 
       const data = await response.json()
 
-      if (data.error) {
-        throw new Error(data.error)
+      if (data.success && data.fix) {
+        setVulnerabilities(prev => prev.map(v => 
+          v.id === vuln.id ? { 
+            ...v, 
+            fix: { ...data.fix, status: 'ready' } 
+          } : v
+        ))
+        addLog(`[AI] ✓ Fix ready for ${vuln.type} (${Math.round(data.fix.confidence * 100)}% confidence)`)
+      } else {
+        throw new Error(data.error || 'Failed to generate fix')
       }
-
-      // Process results
-      addLog('═══════════════════════════════════════')
-      addLog('SCAN RESULTS:')
-      
-      for (const result of data.results) {
-        const statusColor = result.status === 'passed' ? 'PASS' : 'VULN'
-        addLog(`[${statusColor}] ${result.name} → ${result.endpoint}`)
-        
-        if (result.status === 'vulnerable' && result.evidence) {
-          addLog(`       Evidence: ${result.evidence}`)
-        }
-
-        setPentestResults(prev => [...prev, result])
-        await new Promise(resolve => setTimeout(resolve, 300))
-      }
-
-      addLog('═══════════════════════════════════════')
-      addLog(`PENTEST COMPLETE - ${data.summary.vulnerable} vulnerabilities found`)
-      addLog(`Target tested: ${targetUrl}`)
-      addLog('═══════════════════════════════════════')
-
-      // Save results to localStorage
-      localStorage.setItem('aegis_pentest_results', JSON.stringify(data.results))
-
     } catch (error: any) {
-      addLog(`[ERROR] Pentest failed: ${error.message}`)
-      
-      // Fallback to basic connectivity test
-      addLog('[FALLBACK] Running basic security check...')
-      
-      try {
-        const basicResponse = await fetch(targetUrl)
-        const headers = basicResponse.headers
-        
-        const basicResults: PentestResult[] = []
-        
-        // Check security headers
-        const missingHeaders: string[] = []
-        if (!headers.get('x-frame-options')) missingHeaders.push('X-Frame-Options')
-        if (!headers.get('x-content-type-options')) missingHeaders.push('X-Content-Type-Options')
-        if (!headers.get('strict-transport-security')) missingHeaders.push('HSTS')
-        
-        if (missingHeaders.length > 0) {
-          basicResults.push({
-            id: 1,
-            name: 'Security Headers Missing',
-            endpoint: '/',
-            severity: 'Medium',
-            status: 'vulnerable',
-            description: `Missing: ${missingHeaders.join(', ')}`,
-            file: 'next.config.js',
-            line: 5,
-            vulnerableCode: '// No security headers configured',
-            fixedCode: '// Add helmet or custom headers in next.config.js'
-          })
-          addLog(`[VULN] Security Headers Missing → /`)
-        } else {
-          basicResults.push({
-            id: 1,
-            name: 'Security Headers',
-            endpoint: '/',
-            severity: 'Medium',
-            status: 'passed',
-            description: 'Security headers are configured',
-            file: '',
-            line: 0,
-            vulnerableCode: '',
-            fixedCode: ''
-          })
-          addLog(`[PASS] Security Headers → /`)
-        }
-
-        setPentestResults(basicResults)
-        localStorage.setItem('aegis_pentest_results', JSON.stringify(basicResults))
-        
-        addLog('═══════════════════════════════════════')
-        addLog(`BASIC SCAN COMPLETE`)
-        addLog('═══════════════════════════════════════')
-        
-      } catch (e) {
-        addLog(`[ERROR] Cannot reach target: ${targetUrl}`)
-      }
+      addLog(`[ERROR] Failed to generate fix: ${error.message}`)
+      // Set generic fix
+      setVulnerabilities(prev => prev.map(v => 
+        v.id === vuln.id ? { 
+          ...v, 
+          fix: {
+            vulnerabilityId: vuln.id,
+            originalCode: vuln.code,
+            fixedCode: `// TODO: Fix ${vuln.type}\n${vuln.code}`,
+            explanation: `Please review and fix this ${vuln.type} vulnerability manually.`,
+            confidence: 0.5,
+            status: 'ready'
+          }
+        } : v
+      ))
     }
-    
-    setCurrentTest(null)
-    setDeployment(prev => ({ ...prev, status: 'complete' }))
   }
 
-  const handleFixVulnerability = async (vuln: PentestResult) => {
-    setFixingId(vuln.id)
-    addLog(`[FIX] Applying patch for ${vuln.name}...`)
+  const applyFix = async (vuln: VulnWithFix) => {
+    if (!vuln.fix || vuln.fix.status !== 'ready') return
+
+    addLog(`[FIX] Applying fix for ${vuln.type} in ${vuln.file}...`)
     
-    await new Promise(resolve => setTimeout(resolve, 1500))
-    
-    setPentestResults(prev => prev.map(r => 
-      r.id === vuln.id ? { ...r, status: 'fixed' as const } : r
+    // Simulate applying fix
+    await new Promise(r => setTimeout(r, 800))
+
+    setVulnerabilities(prev => prev.map(v => 
+      v.id === vuln.id ? { 
+        ...v, 
+        fix: { ...v.fix!, status: 'applied' }
+      } : v
     ))
-    
-    addLog(`[FIX] ✓ ${vuln.name} patched successfully!`)
-    setFixingId(null)
+
+    addLog(`[FIX] ✓ ${vuln.file}:${vuln.line} - Fixed!`)
     setSelectedVuln(null)
   }
 
-  const handleFixAll = async () => {
-    setDeployment(prev => ({ ...prev, status: 'fixing' }))
-    addLog('═══════════════════════════════════════')
-    addLog('AEGIS AUTO-FIX - Patching all vulnerabilities')
-    addLog('═══════════════════════════════════════')
-
-    const vulns = pentestResults.filter(r => r.status === 'vulnerable')
-    
-    for (const vuln of vulns) {
-      setFixingId(vuln.id)
-      addLog(`[FIX] Patching ${vuln.name}...`)
-      await new Promise(resolve => setTimeout(resolve, 800))
-      
-      setPentestResults(prev => prev.map(r => 
-        r.id === vuln.id ? { ...r, status: 'fixed' as const } : r
-      ))
-      addLog(`[FIX] ✓ ${vuln.file}:${vuln.line} - Fixed!`)
-    }
-
-    setFixingId(null)
-    addLog('═══════════════════════════════════════')
-    addLog('ALL VULNERABILITIES PATCHED!')
-    addLog('═══════════════════════════════════════')
-    setDeployment(prev => ({ ...prev, status: 'fixed' }))
+  const skipFix = (vuln: VulnWithFix) => {
+    setVulnerabilities(prev => prev.map(v => 
+      v.id === vuln.id ? { 
+        ...v, 
+        fix: { ...v.fix!, status: 'skipped' }
+      } : v
+    ))
+    addLog(`[SKIP] Skipped fix for ${vuln.type}`)
+    setSelectedVuln(null)
   }
 
-  const getStatusText = () => {
-    switch (deployment.status) {
-      case 'deploying': return 'Connecting to Vercel...'
-      case 'building': return 'Building on Vercel...'
-      case 'deployed': return 'Deployed!'
-      case 'testing': return `Testing: ${currentTest || 'Initializing...'}`
-      case 'complete': return 'Pentest Complete'
-      case 'fixing': return 'Applying Patches...'
-      case 'fixed': return 'All Fixed!'
-      case 'error': return 'Deployment Failed'
-      default: return 'Ready to Deploy'
+  const applyAllFixes = async () => {
+    const pendingVulns = vulnerabilities.filter(v => v.fix?.status === 'ready')
+    if (pendingVulns.length === 0) return
+
+    setApplyingAll(true)
+    addLog('═══════════════════════════════════════')
+    addLog('AEGIS AUTO-FIX - Applying all fixes...')
+    addLog('═══════════════════════════════════════')
+
+    for (const vuln of pendingVulns) {
+      await applyFix(vuln)
     }
+
+    setApplyingAll(false)
+    addLog('═══════════════════════════════════════')
+    addLog('ALL FIXES APPLIED!')
+    addLog('═══════════════════════════════════════')
   }
 
-  const vulnerableCount = pentestResults.filter(r => r.status === 'vulnerable').length
-  const fixedCount = pentestResults.filter(r => r.status === 'fixed').length
-  const passedCount = pentestResults.filter(r => r.status === 'passed').length
+  const proceedToPhase3 = () => {
+    // Save fixed results
+    const results = {
+      totalVulnerabilities: vulnerabilities.length,
+      fixed: vulnerabilities.filter(v => v.fix?.status === 'applied').length,
+      skipped: vulnerabilities.filter(v => v.fix?.status === 'skipped').length,
+      vulnerabilities: vulnerabilities.map(v => ({
+        ...v,
+        status: v.fix?.status === 'applied' ? 'fixed' : 
+                v.fix?.status === 'skipped' ? 'skipped' : 'pending'
+      }))
+    }
+    localStorage.setItem('aegis_fix_results', JSON.stringify(results))
+    router.push('/phases/phase3')
+  }
+
+  // Stats
+  const readyCount = vulnerabilities.filter(v => v.fix?.status === 'ready').length
+  const appliedCount = vulnerabilities.filter(v => v.fix?.status === 'applied').length
+  const skippedCount = vulnerabilities.filter(v => v.fix?.status === 'skipped').length
+  const loadingCount = vulnerabilities.filter(v => v.fix?.status === 'loading').length
+  const totalCount = vulnerabilities.length
+
+  const allProcessed = readyCount === 0 && loadingCount === 0 && totalCount > 0
+
+  const getSeverityColor = (severity: string) => {
+    switch (severity) {
+      case 'critical': return '#dc2626'
+      case 'high': return '#f97316'
+      case 'medium': return '#eab308'
+      case 'low': return '#22c55e'
+      default: return '#6b7280'
+    }
+  }
 
   return (
     <div className={styles.content}>
@@ -421,214 +297,58 @@ export default function Phase2Page() {
           <div className={styles.terminal}>
             <div className={styles.terminalHeader}>
               <div className={styles.dots}><span/><span/><span/></div>
-              <span className={styles.termTitle}>aegis@deploy:~$ ./pentest.sh</span>
+              <span className={styles.termTitle}>aegis@fix:~$ ./autofix.sh</span>
             </div>
             <div className={styles.terminalBody} ref={terminalRef}>
-              {deployment.logs.map((line, i) => (
+              {logs.map((line, i) => (
                 <div 
                   key={i} 
                   className={`${styles.logLine} ${
-                    line.includes('VULN') ? styles.logVuln : 
-                    line.includes('PASS') || line.includes('successful') || line.includes('✓') ? styles.logPass : 
+                    line.includes('ERROR') ? styles.logError : 
+                    line.includes('✓') ? styles.logPass : 
                     line.includes('FIX') ? styles.logFix :
-                    line.includes('ERROR') || line.includes('Error') ? styles.logError : ''
+                    line.includes('AI') ? styles.logAI :
+                    line.includes('SKIP') ? styles.logSkip : ''
                   }`}
                 >
                   {line}
                 </div>
               ))}
-              {deployment.status === 'testing' && currentTest && (
+              {loadingCount > 0 && (
                 <div className={styles.logLine}>
-                  <span className={styles.spinner}>⠋</span> Testing {currentTest}...
-                </div>
-              )}
-              {deployment.status === 'building' && (
-                <div className={styles.logLine}>
-                  <span className={styles.spinner}>⠋</span> Building on Vercel...
+                  <span className={styles.spinner}>⠋</span> Generating fixes... ({loadingCount} remaining)
                 </div>
               )}
             </div>
           </div>
         </div>
 
-        {/* Right: Status & Results */}
+        {/* Right: Fix Panel */}
         <div className={styles.statusArea}>
           <AnimatePresence mode="wait">
-            {/* Input Form */}
-            {showInput && deployment.status === 'idle' ? (
+            {loading ? (
               <motion.div
-                key="url-input"
+                key="loading"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 className={styles.statusCard}
               >
                 <div className={styles.vercelBrand}>
-                  <div className={styles.vercelIcon}>🚀</div>
-                  <span>One-Click Deploy</span>
+                  <div className={styles.vercelIcon}>🔧</div>
+                  <span>Auto-Fix</span>
                 </div>
-
-                <h2 className={styles.statusTitle}>Enter GitHub Repository</h2>
-                <p style={{ opacity: 0.6, marginBottom: '24px', fontSize: '14px' }}>
-                  AEGIS will auto clone, install, run, and create ngrok tunnel
-                </p>
-
-                <div className={styles.repoInputGroup}>
-                  <input
-                    type="text"
-                    value={repoUrl}
-                    onChange={(e) => setRepoUrl(e.target.value)}
-                    placeholder="https://github.com/owner/repo"
-                    className={styles.repoInput}
-                    onKeyDown={(e) => e.key === 'Enter' && startOneClickDeploy()}
-                  />
-                </div>
-
-                <button 
-                  onClick={startOneClickDeploy} 
-                  disabled={isDeploying}
-                  style={{
-                    width: '100%',
-                    marginTop: '16px',
-                    padding: '16px',
-                    background: 'linear-gradient(135deg, #dc2626, #991b1b)',
-                    border: 'none',
-                    borderRadius: '12px',
-                    color: '#fff',
-                    fontSize: '15px',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '8px'
-                  }}
-                >
-                  🚀 One-Click Deploy & Pentest
-                </button>
-
-                {/* Fallback: Manual Command (shown if serverless) */}
-                {generatedCommand && (
-                  <motion.div 
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    style={{ marginTop: '24px' }}
-                  >
-                    <p style={{ fontSize: '12px', fontWeight: 700, marginBottom: '8px', color: '#f87171' }}>
-                      Cloud Mode - Run manually:
-                    </p>
-                    <div style={{ background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '12px', position: 'relative' }}>
-                      <code style={{ fontSize: '9px', color: '#4ade80', wordBreak: 'break-all', display: 'block', paddingRight: '60px' }}>
-                        {generatedCommand}
-                      </code>
-                      <button 
-                        onClick={copyCommand}
-                        style={{ 
-                          position: 'absolute', 
-                          right: '8px', 
-                          top: '50%', 
-                          transform: 'translateY(-50%)',
-                          background: copied ? '#22c55e' : 'rgba(255,255,255,0.1)',
-                          border: 'none',
-                          borderRadius: '6px',
-                          padding: '6px 12px',
-                          color: '#fff',
-                          fontSize: '11px',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        {copied ? '✓' : 'Copy'}
-                      </button>
-                    </div>
-                    
-                    <div style={{ marginTop: '16px' }}>
-                      <p style={{ fontSize: '11px', opacity: 0.6, marginBottom: '8px' }}>After running, paste ngrok URL:</p>
-                      <div style={{ display: 'flex', gap: '8px' }}>
-                        <input
-                          type="text"
-                          value={targetUrl}
-                          onChange={(e) => setTargetUrl(e.target.value)}
-                          placeholder="https://xxxx.ngrok-free.app"
-                          className={styles.repoInput}
-                          onKeyDown={(e) => e.key === 'Enter' && handleStartPentest()}
-                        />
-                        <button onClick={handleStartPentest} className={styles.deployBtn}>
-                          Scan
-                        </button>
-                      </div>
-                    </div>
-                  </motion.div>
-                )}
-              </motion.div>
-            ) : deployment.status !== 'complete' && deployment.status !== 'fixing' && deployment.status !== 'fixed' ? (
-              <motion.div
-                key="deploying"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className={styles.statusCard}
-              >
-                <div className={styles.vercelBrand}>
-                  <div className={styles.vercelIcon}>▲</div>
-                  <span>Vercel</span>
-                </div>
-
-                <h2 className={styles.statusTitle}>{getStatusText()}</h2>
-
-                {deployment.status === 'error' ? (
-                  <div className={styles.errorBox}>
-                    <p>{deployment.error}</p>
-                    <button 
-                      onClick={() => {
-                        setDeployment(prev => ({ ...prev, status: 'idle', error: null, logs: [] }))
-                        setShowInput(true)
-                      }}
-                      className={styles.retryBtn}
-                    >
-                      Try Again
-                    </button>
+                <h2 className={styles.statusTitle}>Loading Vulnerabilities...</h2>
+                <div className={styles.progressContainer}>
+                  <div className={styles.progressBar}>
+                    <motion.div 
+                      className={styles.progressFill}
+                      initial={{ width: 0 }}
+                      animate={{ width: '50%' }}
+                      transition={{ duration: 1, repeat: Infinity, repeatType: 'reverse' }}
+                    />
                   </div>
-                ) : (
-                  <>
-                    <div className={styles.progressContainer}>
-                      <div className={styles.progressBar}>
-                        <motion.div 
-                          className={styles.progressFill}
-                          initial={{ width: 0 }}
-                          animate={{ width: `${deployment.progress}%` }}
-                        />
-                      </div>
-                      <span className={styles.progressText}>{deployment.progress}%</span>
-                    </div>
-
-                    {deployment.deploymentUrl && (
-                      <motion.div className={styles.urlBox} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                        <div className={styles.urlLabel}>LIVE URL</div>
-                        <a href={deployment.deploymentUrl} target="_blank" rel="noopener noreferrer" className={styles.deploymentUrl}>
-                          {deployment.deploymentUrl}
-                        </a>
-                        <div className={styles.urlStatus}>
-                          <span className={styles.statusDot}></span>
-                          Production Ready
-                        </div>
-                      </motion.div>
-                    )}
-
-                    <div className={styles.deploySteps}>
-                      {['Connect', 'Build', 'Deploy', 'Test'].map((step, i) => {
-                        const stepNum = i + 1
-                        const isActive = deployment.progress >= (stepNum * 25)
-                        const isCurrent = deployment.progress >= ((stepNum - 1) * 25) && deployment.progress < (stepNum * 25)
-                        return (
-                          <div key={i} className={`${styles.step} ${isActive ? styles.stepDone : ''} ${isCurrent ? styles.stepActive : ''}`}>
-                            <div className={styles.stepIcon}>{isActive ? '✓' : stepNum}</div>
-                            <span>{step}</span>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </>
-                )}
+                </div>
               </motion.div>
             ) : selectedVuln ? (
               <motion.div
@@ -641,39 +361,80 @@ export default function Phase2Page() {
                 <button className={styles.backBtn} onClick={() => setSelectedVuln(null)}>← Back</button>
                 
                 <div className={styles.fixHeader}>
-                  <span className={`${styles.sevBadge} ${styles[selectedVuln.severity.toLowerCase()]}`}>
-                    {selectedVuln.severity}
+                  <span 
+                    className={styles.sevBadge}
+                    style={{ background: getSeverityColor(selectedVuln.severity) }}
+                  >
+                    {selectedVuln.severity.toUpperCase()}
                   </span>
-                  <h3>{selectedVuln.name}</h3>
+                  <h3>{selectedVuln.type}</h3>
                   <p>{selectedVuln.description}</p>
                   <div className={styles.fileInfo}>{selectedVuln.file}:{selectedVuln.line}</div>
                 </div>
 
-                <div className={styles.codeDiff}>
-                  <div className={styles.codeBlock}>
-                    <div className={styles.codeHeader + ' ' + styles.vulnerable}>
-                      <span>✕</span> KODE LAMA (VULNERABLE)
-                    </div>
-                    <pre className={styles.codeContent}>{selectedVuln.vulnerableCode}</pre>
+                {selectedVuln.fix?.status === 'loading' ? (
+                  <div style={{ textAlign: 'center', padding: '40px 0' }}>
+                    <div className={styles.spinner} style={{ fontSize: '32px' }}>⠋</div>
+                    <p style={{ marginTop: '16px', opacity: 0.6 }}>AI is generating fix...</p>
                   </div>
+                ) : selectedVuln.fix?.status === 'ready' ? (
+                  <>
+                    <div className={styles.codeDiff}>
+                      <div className={styles.codeBlock}>
+                        <div className={styles.codeHeader + ' ' + styles.vulnerable}>
+                          <span>✕</span> VULNERABLE CODE
+                        </div>
+                        <pre className={styles.codeContent}>{selectedVuln.fix.originalCode}</pre>
+                      </div>
 
-                  <div className={styles.diffArrow}>▼ AEGIS FIX</div>
+                      <div className={styles.diffArrow}>▼ AI FIX</div>
 
-                  <div className={styles.codeBlock}>
-                    <div className={styles.codeHeader + ' ' + styles.fixed}>
-                      <span>✓</span> KODE BARU (100% AMAN)
+                      <div className={styles.codeBlock}>
+                        <div className={styles.codeHeader + ' ' + styles.fixed}>
+                          <span>✓</span> FIXED CODE
+                        </div>
+                        <pre className={styles.codeContent}>{selectedVuln.fix.fixedCode}</pre>
+                      </div>
                     </div>
-                    <pre className={styles.codeContent}>{selectedVuln.fixedCode}</pre>
-                  </div>
-                </div>
 
-                <button 
-                  className={styles.applyFixBtn}
-                  onClick={() => handleFixVulnerability(selectedVuln)}
-                  disabled={fixingId === selectedVuln.id}
-                >
-                  {fixingId === selectedVuln.id ? 'Applying...' : 'Apply Fix'}
-                </button>
+                    <div style={{ 
+                      background: 'rgba(34, 197, 94, 0.1)', 
+                      border: '1px solid rgba(34, 197, 94, 0.3)',
+                      borderRadius: '8px',
+                      padding: '12px',
+                      marginBottom: '16px'
+                    }}>
+                      <strong style={{ color: '#22c55e' }}>Explanation:</strong>
+                      <p style={{ margin: '8px 0 0', fontSize: '13px', opacity: 0.9 }}>
+                        {selectedVuln.fix.explanation}
+                      </p>
+                      <div style={{ marginTop: '8px', fontSize: '12px', opacity: 0.6 }}>
+                        Confidence: {Math.round(selectedVuln.fix.confidence * 100)}%
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '12px' }}>
+                      <button 
+                        className={styles.applyFixBtn}
+                        onClick={() => applyFix(selectedVuln)}
+                      >
+                        Apply Fix
+                      </button>
+                      <button 
+                        className={styles.skipBtn}
+                        onClick={() => skipFix(selectedVuln)}
+                      >
+                        Skip
+                      </button>
+                    </div>
+                  </>
+                ) : selectedVuln.fix?.status === 'applied' ? (
+                  <div style={{ textAlign: 'center', padding: '40px 0' }}>
+                    <div style={{ fontSize: '48px', marginBottom: '16px' }}>✅</div>
+                    <h3 style={{ color: '#22c55e' }}>Fix Applied!</h3>
+                    <p style={{ opacity: 0.6, marginTop: '8px' }}>This vulnerability has been fixed.</p>
+                  </div>
+                ) : null}
               </motion.div>
             ) : (
               <motion.div
@@ -683,57 +444,80 @@ export default function Phase2Page() {
                 className={styles.resultsCard}
               >
                 <div className={styles.resultsHeader}>
-                  <div className={deployment.status === 'fixed' ? styles.resultsBadgeFixed : styles.resultsBadge}>
-                    {deployment.status === 'fixed' ? 'ALL FIXED!' : 'PENTEST COMPLETE'}
+                  <div className={allProcessed && appliedCount > 0 ? styles.resultsBadgeFixed : styles.resultsBadge}>
+                    {allProcessed ? (appliedCount === totalCount ? 'ALL FIXED!' : 'REVIEW COMPLETE') : 'AUTO-FIX'}
                   </div>
-                  <h2>Security Assessment</h2>
-                  <p>Target: {deployment.deploymentUrl}</p>
+                  <h2>Phase 2: Auto-Fix</h2>
+                  <p>AI-powered vulnerability remediation</p>
                 </div>
 
                 <div className={styles.statsRow}>
                   <div className={`${styles.statBox} ${styles.statVuln}`}>
-                    <div className={styles.statNum}>{vulnerableCount}</div>
-                    <div className={styles.statLabel}>Vulnerable</div>
+                    <div className={styles.statNum}>{readyCount}</div>
+                    <div className={styles.statLabel}>Pending</div>
                   </div>
                   <div className={`${styles.statBox} ${styles.statFixed}`}>
-                    <div className={styles.statNum}>{fixedCount}</div>
+                    <div className={styles.statNum}>{appliedCount}</div>
                     <div className={styles.statLabel}>Fixed</div>
                   </div>
                   <div className={`${styles.statBox} ${styles.statPass}`}>
-                    <div className={styles.statNum}>{passedCount}</div>
-                    <div className={styles.statLabel}>Passed</div>
+                    <div className={styles.statNum}>{skippedCount}</div>
+                    <div className={styles.statLabel}>Skipped</div>
                   </div>
                 </div>
 
                 <div className={styles.vulnList}>
-                  {pentestResults.filter(r => r.status === 'vulnerable' || r.status === 'fixed').map(result => (
+                  {vulnerabilities.map(vuln => (
                     <div 
-                      key={result.id} 
-                      className={`${styles.vulnItem} ${result.status === 'fixed' ? styles.vulnFixed : ''}`}
-                      onClick={() => result.status === 'vulnerable' && setSelectedVuln(result)}
+                      key={vuln.id} 
+                      className={`${styles.vulnItem} ${
+                        vuln.fix?.status === 'applied' ? styles.vulnFixed : 
+                        vuln.fix?.status === 'skipped' ? styles.vulnSkipped : ''
+                      }`}
+                      onClick={() => setSelectedVuln(vuln)}
                     >
                       <div className={styles.vulnHeader}>
-                        <span className={`${styles.sevBadge} ${result.status === 'fixed' ? styles.fixedBadge : styles[result.severity.toLowerCase()]}`}>
-                          {result.status === 'fixed' ? '✓ FIXED' : result.severity}
+                        <span 
+                          className={styles.sevBadge}
+                          style={{ 
+                            background: vuln.fix?.status === 'applied' ? '#22c55e' :
+                                       vuln.fix?.status === 'skipped' ? '#6b7280' :
+                                       getSeverityColor(vuln.severity)
+                          }}
+                        >
+                          {vuln.fix?.status === 'applied' ? '✓ FIXED' : 
+                           vuln.fix?.status === 'skipped' ? 'SKIPPED' :
+                           vuln.severity.toUpperCase()}
                         </span>
-                        <span className={styles.vulnEndpoint}>{result.endpoint}</span>
+                        <span className={styles.vulnEndpoint}>{vuln.file}:{vuln.line}</span>
                       </div>
-                      <div className={styles.vulnName}>{result.name}</div>
-                      <div className={styles.vulnDesc}>{result.description}</div>
-                      {result.status === 'vulnerable' && (
-                        <button className={styles.viewFixBtn}>View & Fix →</button>
+                      <div className={styles.vulnName}>{vuln.type}</div>
+                      <div className={styles.vulnDesc}>{vuln.description}</div>
+                      {vuln.fix?.status === 'ready' && (
+                        <button className={styles.viewFixBtn}>View Fix →</button>
+                      )}
+                      {vuln.fix?.status === 'loading' && (
+                        <span style={{ fontSize: '12px', opacity: 0.6 }}>
+                          <span className={styles.spinner}>⠋</span> Generating...
+                        </span>
                       )}
                     </div>
                   ))}
                 </div>
 
-                {vulnerableCount > 0 ? (
-                  <button onClick={handleFixAll} className={styles.fixAllBtn} disabled={deployment.status === 'fixing'}>
-                    {deployment.status === 'fixing' ? 'Fixing...' : `Fix All ${vulnerableCount} Vulnerabilities`}
+                {readyCount > 0 && (
+                  <button 
+                    onClick={applyAllFixes} 
+                    className={styles.fixAllBtn} 
+                    disabled={applyingAll}
+                  >
+                    {applyingAll ? 'Applying...' : `Apply All ${readyCount} Fixes`}
                   </button>
-                ) : (
-                  <button onClick={() => router.push('/phases/phase3')} className={styles.proceedBtn}>
-                    Continue to Phase 3 - Monitoring
+                )}
+
+                {allProcessed && (
+                  <button onClick={proceedToPhase3} className={styles.proceedBtn}>
+                    Continue to Phase 3 - Protection →
                   </button>
                 )}
               </motion.div>

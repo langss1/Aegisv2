@@ -706,6 +706,50 @@
   color: #60a5fa;
 }
 
+.logAI {
+  color: #a78bfa;
+}
+
+.logSkip {
+  color: #6b7280;
+}
+
+/* Skip Button */
+.skipBtn {
+  flex: 1;
+  background: rgba(107, 114, 128, 0.2);
+  border: 1px solid rgba(107, 114, 128, 0.3);
+  color: #9ca3af;
+  padding: 14px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.skipBtn:hover {
+  background: rgba(107, 114, 128, 0.3);
+  color: #fff;
+}
+
+/* Skipped Vulnerability */
+.vulnSkipped {
+  opacity: 0.5;
+  border-left-color: #6b7280 !important;
+}
+
+/* Clickable Vuln Item */
+.vulnItem {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.vulnItem:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
 /* Vercel Branding */
 .vercelBrand {
   display: flex;
