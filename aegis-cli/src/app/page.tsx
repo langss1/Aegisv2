@@ -1,5 +1,10 @@
 'use client'
+<<<<<<< HEAD
 import { useState, useEffect, useRef } from 'react'
+=======
+import { useState, useEffect, useRef, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
+>>>>>>> ee65a2e9f35f31a680ad17b094347e848b69aad0
 import { motion, AnimatePresence } from 'framer-motion'
 import styles from './terminal.module.css'
 
@@ -9,9 +14,19 @@ type LogEntry = {
   content: string | React.ReactNode
 }
 
+<<<<<<< HEAD
 export default function TerminalPage() {
   const [logs, setLogs] = useState<LogEntry[]>([
     { id: 1, type: 'info', content: 'SYSTEM READY. WAITING FOR AUTHORIZATION...' },
+=======
+function TerminalContent() {
+  const searchParams = useSearchParams()
+  const initialPath = searchParams.get('path') || 'C:\\Project Sems 6\\aegis'
+  const [currentPath, setCurrentPath] = useState(initialPath)
+  
+  const [logs, setLogs] = useState<LogEntry[]>([
+    { id: 1, type: 'info', content: `SYSTEM READY. NODE CONNECTED AT: ${initialPath}` },
+>>>>>>> ee65a2e9f35f31a680ad17b094347e848b69aad0
     { id: 2, type: 'info', content: 'Type "aegis" to initialize the agent core.' },
   ])
   const [input, setInput] = useState('')
@@ -45,6 +60,10 @@ export default function TerminalPage() {
 [ AGENT CORE INITIALIZED ]
 [ ACCESS LEVEL: ROOT_ADMIN ]
 [ SYSTEM: AUTONOMOUS_MODE_ENABLED ]
+<<<<<<< HEAD
+=======
+[ WORKING DIR: ${currentPath} ]
+>>>>>>> ee65a2e9f35f31a680ad17b094347e848b69aad0
 --------------------------------------------------
 Welcome to AEGIS Command Interface.
 Type "/help" to begin security operations.
@@ -58,6 +77,10 @@ AVAILABLE COMMANDS:
 /models         - List available security AI models
 /status         - Check agent system health
 /clear          - Clear the terminal screen
+<<<<<<< HEAD
+=======
+/path [dir]     - Change current working directory
+>>>>>>> ee65a2e9f35f31a680ad17b094347e848b69aad0
 scan [target]   - Start autonomous security scan
 heal [file]    - Apply AI patch to vulnerable file
 --------------------------------------------------`})
@@ -74,6 +97,7 @@ AE-HEAL-V2      Auto-Patch Gen  Remediation     ONLINE
 --------------------------------------------------------`})
     }
     else if (cmd === '/status') {
+<<<<<<< HEAD
       newLogs.push({ id: Date.now() + 1, type: 'info', content: 'SYSTEM STATUS: [OK]\nAI AGENT: [ACTIVE]\nNETWORK: [PROTECTED]\nLATENCY: 12ms' })
     }
     else if (cmd === '/clear') {
@@ -87,6 +111,51 @@ AE-HEAL-V2      Auto-Patch Gen  Remediation     ONLINE
       setTimeout(() => {
         setLogs(prev => [...prev, { id: Date.now() + 2, type: 'success', content: `Scan Complete for ${target}. 0 Critical, 2 Medium vulnerabilities found.` }])
       }, 2000)
+=======
+      newLogs.push({ id: Date.now() + 1, type: 'info', content: `SYSTEM STATUS: [OK]\nAI AGENT: [ACTIVE]\nLOCATION: ${currentPath}\nNETWORK: [PROTECTED]\nLATENCY: 12ms` })
+    }
+    else if (cmd === '/clear' || cmd === 'clear' || cmd === 'cls') {
+      setLogs([
+        { id: Date.now(), type: 'info', content: `SYSTEM RELOADED. NODE: ${currentPath}` },
+        { id: Date.now() + 1, type: 'info', content: 'Type "aegis" to initialize the agent core.' },
+      ])
+      setInput('')
+      return
+    }
+    else if (cmd.startsWith('/path ')) {
+      const newP = cmd.substring(6).trim()
+      setCurrentPath(newP)
+      newLogs.push({ id: Date.now() + 1, type: 'success', content: `Working directory changed to: ${newP}` })
+    }
+    else if (cmd.startsWith('scan ') || cmd === 'scan') {
+      const target = cmd.split(' ')[1] || 'current_workspace'
+      newLogs.push({ id: Date.now() + 1, type: 'info', content: `[AI_ANALYSIS] Initializing Deep Scan for: ${target}...` })
+      
+      // Call Backend
+      fetch('/api/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider: 'aegis', prompt: `Scan ${target}` })
+      })
+      .then(res => res.json())
+      .then(data => {
+        setLogs(prev => [...prev, { id: Date.now() + 2, type: 'success', content: data.response || 'Scan complete.' }])
+      })
+    }
+    else if (cmd.startsWith('ai ')) {
+      const prompt = cmd.substring(3)
+      newLogs.push({ id: Date.now() + 1, type: 'info', content: `[THINKING] Connecting to Aegis Core...` })
+      
+      fetch('/api/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider: 'aegis', prompt })
+      })
+      .then(res => res.json())
+      .then(data => {
+        setLogs(prev => [...prev, { id: Date.now() + 2, type: 'success', content: data.response }])
+      })
+>>>>>>> ee65a2e9f35f31a680ad17b094347e848b69aad0
     }
     else {
       newLogs.push({ id: Date.now() + 1, type: 'error', content: `Command not found: "${input}". Type "/help" for list of commands.` })
@@ -96,12 +165,20 @@ AE-HEAL-V2      Auto-Patch Gen  Remediation     ONLINE
     setInput('')
   }
 
+<<<<<<< HEAD
+=======
+  const shortPath = currentPath.split(/[\\/]/).pop() || currentPath
+
+>>>>>>> ee65a2e9f35f31a680ad17b094347e848b69aad0
   return (
     <div className={styles.terminalContainer} onClick={focusInput}>
       <div className={styles.scanline} />
       <div className={styles.vignette} />
       
+<<<<<<< HEAD
       {/* Red vertical lines on sides */}
+=======
+>>>>>>> ee65a2e9f35f31a680ad17b094347e848b69aad0
       <div className={styles.edgeGlowLeft} />
       <div className={styles.edgeGlowRight} />
 
@@ -109,6 +186,10 @@ AE-HEAL-V2      Auto-Patch Gen  Remediation     ONLINE
         <div className={styles.headerTitle}>
           <span className={styles.headerIcon}>🛡️</span>
           <span>AEGIS_CLI_v2.0_AGENT</span>
+<<<<<<< HEAD
+=======
+          <span className={styles.headerPath}>[{currentPath}]</span>
+>>>>>>> ee65a2e9f35f31a680ad17b094347e848b69aad0
         </div>
         <div className={styles.headerStatus}>
           <span className={styles.pulse} />
@@ -126,14 +207,22 @@ AE-HEAL-V2      Auto-Patch Gen  Remediation     ONLINE
               transition={{ duration: 0.2 }}
               className={`${styles.logEntry} ${styles[log.type]}`}
             >
+<<<<<<< HEAD
               {log.type === 'input' && <span className={styles.prompt}>aegis@admin:~# </span>}
+=======
+              {log.type === 'input' && <span className={styles.prompt}>aegis@{shortPath}:~# </span>}
+>>>>>>> ee65a2e9f35f31a680ad17b094347e848b69aad0
               <pre className={styles.preContent}>{log.content}</pre>
             </motion.div>
           ))}
         </div>
 
         <form onSubmit={handleCommand} className={styles.inputArea}>
+<<<<<<< HEAD
           <span className={styles.prompt}>aegis@admin:~# </span>
+=======
+          <span className={styles.prompt}>aegis@{shortPath}:~# </span>
+>>>>>>> ee65a2e9f35f31a680ad17b094347e848b69aad0
           <input
             ref={inputRef}
             type="text"
@@ -149,9 +238,24 @@ AE-HEAL-V2      Auto-Patch Gen  Remediation     ONLINE
 
       <footer className={styles.footer}>
         <div className={styles.footerItem}>USER: AEGIS_ROOT</div>
+<<<<<<< HEAD
         <div className={styles.footerItem}>NODE: IDN_JKT_01</div>
+=======
+        <div className={styles.footerItem}>PATH: {currentPath}</div>
+>>>>>>> ee65a2e9f35f31a680ad17b094347e848b69aad0
         <div className={styles.footerItem}>MODE: AUTONOMOUS_ENFORCER</div>
       </footer>
     </div>
   )
 }
+<<<<<<< HEAD
+=======
+
+export default function TerminalPage() {
+  return (
+    <Suspense fallback={<div>Loading Aegis Core...</div>}>
+      <TerminalContent />
+    </Suspense>
+  )
+}
+>>>>>>> ee65a2e9f35f31a680ad17b094347e848b69aad0

@@ -23,9 +23,13 @@ yarn-debug.log*
 yarn-error.log*
 
 # local env files
+<<<<<<< HEAD
 .env
 .env.*
 !.env.example
+=======
+.env*.local
+>>>>>>> ee65a2e9f35f31a680ad17b094347e848b69aad0
 
 # vercel
 .vercel
@@ -33,6 +37,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+<<<<<<< HEAD
 
 # project specific
 .runlogs/
@@ -40,3 +45,5 @@ uploads/
 vulnerable-app.zip
 vulnerable-app/
 .devin/
+=======
+>>>>>>> ee65a2e9f35f31a680ad17b094347e848b69aad0
