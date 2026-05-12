@@ -67,20 +67,132 @@ export default function Phase2Page() {
     addLog('Enter target URL to begin security scan...')
   }, [])
 
-  const generateNgrokCommand = () => {
+  const [deployJobId, setDeployJobId] = useState<string | null>(null)
+  const [isDeploying, setIsDeploying] = useState(false)
+
+  const startOneClickDeploy = async () => {
     if (!repoUrl.trim() || !repoUrl.includes('github.com')) {
       addLog('ERROR: Please enter a valid GitHub URL')
       return
     }
-    
-    const ngrokToken = process.env.NEXT_PUBLIC_NGROK_TOKEN || '3DUQzokiv5uu7N0AbYEtEOlPtxw_2bvWYRxbBicG55VFVfmu'
-    
-    // Generate one-liner command
-    const command = `git clone ${repoUrl} aegis-target && cd aegis-target && npm install && npm start & sleep 5 && ngrok config add-authtoken ${ngrokToken} && ngrok http 3000`
-    
-    setGeneratedCommand(command)
-    addLog('Command generated! Copy and run in your terminal.')
-    addLog('After ngrok starts, copy the URL and paste it below.')
+
+    setIsDeploying(true)
+    setShowInput(false)
+    setDeployment(prev => ({ ...prev, status: 'deploying', progress: 10 }))
+    addLog(`Starting one-click deployment...`)
+    addLog(`Repository: ${repoUrl}`)
+
+    try {
+      // Start deployment
+      const response = await fetch('/api/deploy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'deploy', repoUrl })
+      })
+
+      const data = await response.json()
+
+      if (data.serverless) {
+        // Running on Vercel - fall back to manual
+        addLog('Running in cloud mode - manual deployment required')
+        setShowInput(true)
+        setIsDeploying(false)
+        setDeployment(prev => ({ ...prev, status: 'idle' }))
+        
+        // Generate command for manual use
+        const ngrokToken = '3DUQzokiv5uu7N0AbYEtEOlPtxw_2bvWYRxbBicG55VFVfmu'
+        const command = `git clone ${repoUrl} aegis-target && cd aegis-target && npm install && npm start & sleep 5 && ngrok config add-authtoken ${ngrokToken} && ngrok http 3000`
+        setGeneratedCommand(command)
+        return
+      }
+
+      if (!data.success) {
+        throw new Error(data.error || 'Deployment failed')
+      }
+
+      setDeployJobId(data.jobId)
+      addLog(`Job started: ${data.jobId}`)
+
+      // Poll for status
+      pollDeploymentStatus(data.jobId)
+
+    } catch (error: any) {
+      addLog(`ERROR: ${error.message}`)
+      setIsDeploying(false)
+      setShowInput(true)
+      setDeployment(prev => ({ ...prev, status: 'error', error: error.message }))
+    }
+  }
+
+  const pollDeploymentStatus = async (jobId: string) => {
+    const maxAttempts = 60
+    let attempts = 0
+
+    while (attempts < maxAttempts) {
+      await new Promise(r => setTimeout(r, 2000))
+
+      try {
+        const res = await fetch(`/api/deploy?jobId=${jobId}`)
+        const job = await res.json()
+
+        // Update progress based on status
+        const statusProgress: Record<string, number> = {
+          'pending': 10,
+          'cloning': 25,
+          'installing': 50,
+          'starting': 70,
+          'tunneling': 85,
+          'ready': 100,
+          'error': 0
+        }
+
+        setDeployment(prev => ({
+          ...prev,
+          status: job.status === 'ready' ? 'deployed' : 'deploying',
+          progress: statusProgress[job.status] || 50
+        }))
+
+        // Log new messages
+        if (job.logs && job.logs.length > 0) {
+          const lastLog = job.logs[job.logs.length - 1]
+          addLog(lastLog)
+        }
+
+        if (job.status === 'ready' && job.ngrokUrl) {
+          addLog(`Deployment successful!`)
+          addLog(`Live URL: ${job.ngrokUrl}`)
+          setDeployment(prev => ({
+            ...prev,
+            status: 'deployed',
+            deploymentUrl: job.ngrokUrl,
+            progress: 100
+          }))
+          setTargetUrl(job.ngrokUrl)
+          setIsDeploying(false)
+
+          // Auto-start pentest
+          setTimeout(() => {
+            startPentest(job.ngrokUrl)
+          }, 1500)
+          return
+        }
+
+        if (job.status === 'error') {
+          throw new Error(job.error || 'Deployment failed')
+        }
+
+      } catch (e: any) {
+        if (e.message !== 'Deployment failed') {
+          console.error('Poll error:', e)
+        } else {
+          throw e
+        }
+      }
+
+      attempts++
+    }
+
+    throw new Error('Deployment timeout')
   }
 
   const copyCommand = () => {
@@ -353,43 +465,60 @@ export default function Phase2Page() {
               >
                 <div className={styles.vercelBrand}>
                   <div className={styles.vercelIcon}>🚀</div>
-                  <span>Auto Deploy + Pentest</span>
+                  <span>One-Click Deploy</span>
                 </div>
 
-                {/* Step 1: GitHub Repo */}
-                <div style={{ marginBottom: '20px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-                    <span style={{ background: '#dc2626', color: '#fff', width: '24px', height: '24px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 'bold' }}>1</span>
-                    <span style={{ fontWeight: 700 }}>Enter GitHub Repo</span>
-                  </div>
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <input
-                      type="text"
-                      value={repoUrl}
-                      onChange={(e) => setRepoUrl(e.target.value)}
-                      placeholder="https://github.com/owner/repo"
-                      className={styles.repoInput}
-                      onKeyDown={(e) => e.key === 'Enter' && generateNgrokCommand()}
-                    />
-                    <button onClick={generateNgrokCommand} className={styles.deployBtn} style={{ whiteSpace: 'nowrap' }}>
-                      Generate
-                    </button>
-                  </div>
+                <h2 className={styles.statusTitle}>Enter GitHub Repository</h2>
+                <p style={{ opacity: 0.6, marginBottom: '24px', fontSize: '14px' }}>
+                  AEGIS will auto clone, install, run, and create ngrok tunnel
+                </p>
+
+                <div className={styles.repoInputGroup}>
+                  <input
+                    type="text"
+                    value={repoUrl}
+                    onChange={(e) => setRepoUrl(e.target.value)}
+                    placeholder="https://github.com/owner/repo"
+                    className={styles.repoInput}
+                    onKeyDown={(e) => e.key === 'Enter' && startOneClickDeploy()}
+                  />
                 </div>
 
-                {/* Step 2: Generated Command */}
+                <button 
+                  onClick={startOneClickDeploy} 
+                  disabled={isDeploying}
+                  style={{
+                    width: '100%',
+                    marginTop: '16px',
+                    padding: '16px',
+                    background: 'linear-gradient(135deg, #dc2626, #991b1b)',
+                    border: 'none',
+                    borderRadius: '12px',
+                    color: '#fff',
+                    fontSize: '15px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px'
+                  }}
+                >
+                  🚀 One-Click Deploy & Pentest
+                </button>
+
+                {/* Fallback: Manual Command (shown if serverless) */}
                 {generatedCommand && (
                   <motion.div 
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    style={{ marginBottom: '20px' }}
+                    style={{ marginTop: '24px' }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-                      <span style={{ background: '#dc2626', color: '#fff', width: '24px', height: '24px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 'bold' }}>2</span>
-                      <span style={{ fontWeight: 700 }}>Run in Terminal</span>
-                    </div>
+                    <p style={{ fontSize: '12px', fontWeight: 700, marginBottom: '8px', color: '#f87171' }}>
+                      Cloud Mode - Run manually:
+                    </p>
                     <div style={{ background: '#0a0a0a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '12px', position: 'relative' }}>
-                      <code style={{ fontSize: '10px', color: '#4ade80', wordBreak: 'break-all', display: 'block', paddingRight: '60px' }}>
+                      <code style={{ fontSize: '9px', color: '#4ade80', wordBreak: 'break-all', display: 'block', paddingRight: '60px' }}>
                         {generatedCommand}
                       </code>
                       <button 
@@ -408,32 +537,28 @@ export default function Phase2Page() {
                           cursor: 'pointer'
                         }}
                       >
-                        {copied ? '✓ Copied!' : 'Copy'}
+                        {copied ? '✓' : 'Copy'}
                       </button>
+                    </div>
+                    
+                    <div style={{ marginTop: '16px' }}>
+                      <p style={{ fontSize: '11px', opacity: 0.6, marginBottom: '8px' }}>After running, paste ngrok URL:</p>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <input
+                          type="text"
+                          value={targetUrl}
+                          onChange={(e) => setTargetUrl(e.target.value)}
+                          placeholder="https://xxxx.ngrok-free.app"
+                          className={styles.repoInput}
+                          onKeyDown={(e) => e.key === 'Enter' && handleStartPentest()}
+                        />
+                        <button onClick={handleStartPentest} className={styles.deployBtn}>
+                          Scan
+                        </button>
+                      </div>
                     </div>
                   </motion.div>
                 )}
-
-                {/* Step 3: Paste ngrok URL */}
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-                    <span style={{ background: generatedCommand ? '#dc2626' : 'rgba(255,255,255,0.2)', color: '#fff', width: '24px', height: '24px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 'bold' }}>3</span>
-                    <span style={{ fontWeight: 700, opacity: generatedCommand ? 1 : 0.5 }}>Paste ngrok URL & Start</span>
-                  </div>
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <input
-                      type="text"
-                      value={targetUrl}
-                      onChange={(e) => setTargetUrl(e.target.value)}
-                      placeholder="https://xxxx.ngrok-free.app"
-                      className={styles.repoInput}
-                      onKeyDown={(e) => e.key === 'Enter' && handleStartPentest()}
-                    />
-                    <button onClick={handleStartPentest} className={styles.deployBtn} style={{ background: 'linear-gradient(135deg, #dc2626, #991b1b)' }}>
-                      Start Pentest
-                    </button>
-                  </div>
-                </div>
               </motion.div>
             ) : deployment.status !== 'complete' && deployment.status !== 'fixing' && deployment.status !== 'fixed' ? (
               <motion.div
