@@ -1,4 +1,5 @@
 'use client'
+export const dynamic = 'force-dynamic'
 import styles from '../dashboard.module.css'
 
 export default function DashboardPage() {
