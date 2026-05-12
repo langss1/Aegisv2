@@ -9,7 +9,7 @@
  */
 
 import { getAllHealings, ServerHealingAction as HealingAction } from "./healingState";
-import { getAllAttacks, AttackRecord } from "./attackState";
+import { getAllAttacks, ServerAttackEvent as AttackRecord } from "./attackState";
 import { CVEResult } from "./cveMonitor";
 import * as fs from "fs";
 import * as path from "path";

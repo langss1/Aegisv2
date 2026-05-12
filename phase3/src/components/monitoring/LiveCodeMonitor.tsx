@@ -239,11 +239,14 @@ export function LiveCodeMonitor() {
                 className="h-8 text-xs"
               />
               {ngrokUrl && (
-                <Button size="sm" variant="ghost" asChild>
-                  <a href={ngrokUrl} target="_blank" rel="noopener noreferrer">
-                    <ExternalLink className="h-3 w-3" />
-                  </a>
-                </Button>
+                <a 
+                  href={ngrokUrl} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center h-8 w-8 rounded-md bg-transparent hover:bg-secondary text-foreground"
+                >
+                  <ExternalLink className="h-3 w-3" />
+                </a>
               )}
             </div>
           </div>
@@ -323,7 +326,7 @@ export function LiveCodeMonitor() {
               {data.analysis.vulnerabilities.map((vuln, idx) => (
                 <Badge 
                   key={idx} 
-                  variant="outline"
+                  tone="outline"
                   className={`text-xs cursor-pointer ${getSeverityColor(vuln.severity)}`}
                   onClick={() => {
                     const el = document.getElementById(`line-${vuln.line}`);
@@ -342,7 +345,7 @@ export function LiveCodeMonitor() {
         {data?.file.content && (
           <div className="relative">
             <div className="absolute top-2 right-2 z-10">
-              <Badge variant="secondary" className="text-xs">
+              <Badge tone="secondary" className="text-xs">
                 {data.file.name} • {data.file.lines} lines
               </Badge>
             </div>
