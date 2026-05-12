@@ -363,10 +363,26 @@ AEGIS_PROJECT_ID=${projectId}`
                   </ul>
                 </div>
 
+                {/* Repository URL Input */}
+                <div className={styles.inputGroup}>
+                  <label>GitHub Repository URL</label>
+                  <input
+                    type="text"
+                    value={scanContext?.repoUrl || ''}
+                    onChange={(e) => setScanContext(prev => ({ ...prev!, repoUrl: e.target.value, repoName: e.target.value.split('/').pop() || '' }))}
+                    placeholder="https://github.com/username/repo"
+                    className={styles.input}
+                  />
+                </div>
+
+                {/* GitHub Token Input */}
                 <div className={styles.inputGroup}>
                   <label>GitHub Personal Access Token</label>
                   <p className={styles.inputHint}>
-                    Need a token? <a href="https://github.com/settings/tokens/new?scopes=repo" target="_blank" rel="noopener noreferrer">Create one here</a> with <code>repo</code> scope
+                    <a href="https://github.com/settings/tokens/new?scopes=repo&description=AEGIS%20Security" target="_blank" rel="noopener noreferrer">
+                      → Create token here
+                    </a>
+                    {' '}(select <code>repo</code> scope)
                   </p>
                   <input
                     type="password"
@@ -377,9 +393,14 @@ AEGIS_PROJECT_ID=${projectId}`
                   />
                 </div>
 
-                <div className={styles.repoInfo}>
-                  <span>Repository:</span>
-                  <code>{scanContext?.repoUrl || 'Not specified'}</code>
+                {/* Scope Info Box */}
+                <div className={styles.scopeInfo}>
+                  <h4>Required Scopes:</h4>
+                  <div className={styles.scopeList}>
+                    <span className={styles.scopeItem}>☑️ repo</span>
+                    <span className={styles.scopeDesc}>Full control of private repositories</span>
+                  </div>
+                  <p>For public repos only, <code>public_repo</code> is enough</p>
                 </div>
 
                 {prError && (
@@ -389,9 +410,9 @@ AEGIS_PROJECT_ID=${projectId}`
                 <button 
                   onClick={handleCreatePR}
                   className={styles.primaryBtn}
-                  disabled={!githubToken.trim()}
+                  disabled={!githubToken.trim() || !scanContext?.repoUrl}
                 >
-                  Create Pull Request →
+                  🚀 Create Pull Request
                 </button>
               </>
             )}
