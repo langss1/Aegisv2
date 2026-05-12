@@ -2,6 +2,18 @@
 
 ## Struktur Menu & Halaman
 
+Platform ini dirancang dengan alur kerja bertahap (phases) yang mencakup analisis statis hingga pemantauan real-time.
+
+- **Landing Page**: http://localhost:3000/
+- **Login Page**: http://localhost:3000/login
+- **Dashboard**: http://localhost:3000/dashboard
+
+### Pengembangan
+Project web berada di dalam direktori `aegis-teaser/`.
+
+---
+(Konten asli di bawah)
+
 Berikut adalah penjelasan singkat untuk masing-masing menu dan halaman di dalam platform AEGIS:
 
 - **Landing Page**: Halaman awal yang menjelaskan fitur, fase, dan manfaat AEGIS secara umum sebelum login.
