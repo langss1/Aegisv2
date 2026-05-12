@@ -13,6 +13,7 @@ interface Finding {
   currentCode: string
   fixedCode: string
   description: string
+  patched?: boolean
 }
 
 interface ScanContext {
@@ -154,10 +155,30 @@ export default function Phase1Page() {
               fixedCode: `const result = JSON.parse(userInput)`,
               line: 23,
               description: 'eval() executes arbitrary code and is a security risk.'
+            },
+            { 
+              id: 4, 
+              file: 'server.js', 
+              issue: 'Missing Rate Limiting', 
+              severity: 'Medium',
+              currentCode: `app.post('/login', handleLogin)`,
+              fixedCode: `app.post('/login', rateLimiter, handleLogin)`,
+              line: 78,
+              description: 'API endpoints should have rate limiting to prevent brute force attacks.'
+            },
+            { 
+              id: 5, 
+              file: 'config.py', 
+              issue: 'Debug Mode Enabled', 
+              severity: 'Low',
+              currentCode: `DEBUG = True`,
+              fixedCode: `DEBUG = os.environ.get("DEBUG", "false").lower() == "true"`,
+              line: 5,
+              description: 'Debug mode should be disabled in production environments.'
             }
           ])
-          setSummary({ critical: 2, high: 1, medium: 0, low: 0 })
-          setScannedFiles(15)
+          setSummary({ critical: 2, high: 1, medium: 1, low: 1 })
+          setScannedFiles(47)
           return 100
         }
         return prev + 2
@@ -178,8 +199,9 @@ export default function Phase1Page() {
 
   const handleApplyPatch = (finding: Finding) => {
     setFindings(prev => prev.map(f => 
-      f.id === finding.id ? { ...f, patched: true } as any : f
+      f.id === finding.id ? { ...f, patched: true } : f
     ))
+    setSelectedFinding(null)
   }
 
   const handlePatchAllAndContinue = async () => {
@@ -205,6 +227,8 @@ export default function Phase1Page() {
     
     router.push('/phases/phase2')
   }
+
+  const totalFindings = summary.critical + summary.high + summary.medium + summary.low
 
   return (
     <div className={styles.content}>
@@ -297,63 +321,115 @@ export default function Phase1Page() {
           </motion.div>
         ) : (
           <motion.div 
-            key="results"
+            key="dashboard"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className={styles.resultsGrid}
+            className={styles.dashboard}
           >
-            <div className={styles.findingsSidebar}>
-              <div className={styles.sidebarHeader}>
-                <h3>Vulnerabilities</h3>
-                <span className={styles.badgeCount}>{findings.length}</span>
+            {/* Dashboard Header */}
+            <div className={styles.dashboardHeader}>
+              <div className={styles.headerLeft}>
+                <h1>Security Analysis</h1>
+                <p>
+                  {scanContext ? scanContext.repoName : 'Demo Project'} • Scanned {scannedFiles} files
+                </p>
               </div>
-              
-              {/* Summary Stats */}
-              <div style={{ 
-                display: 'grid', 
-                gridTemplateColumns: 'repeat(2, 1fr)', 
-                gap: '8px', 
-                padding: '12px',
-                background: 'rgba(0,0,0,0.3)',
-                borderRadius: '12px',
-                marginBottom: '16px'
-              }}>
-                <div style={{ textAlign: 'center', padding: '8px' }}>
-                  <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#dc2626' }}>{summary.critical}</div>
-                  <div style={{ fontSize: '10px', opacity: 0.6 }}>CRITICAL</div>
-                </div>
-                <div style={{ textAlign: 'center', padding: '8px' }}>
-                  <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#f97316' }}>{summary.high}</div>
-                  <div style={{ fontSize: '10px', opacity: 0.6 }}>HIGH</div>
-                </div>
-                <div style={{ textAlign: 'center', padding: '8px' }}>
-                  <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#eab308' }}>{summary.medium}</div>
-                  <div style={{ fontSize: '10px', opacity: 0.6 }}>MEDIUM</div>
-                </div>
-                <div style={{ textAlign: 'center', padding: '8px' }}>
-                  <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#22c55e' }}>{summary.low}</div>
-                  <div style={{ fontSize: '10px', opacity: 0.6 }}>LOW</div>
-                </div>
+              <div className={styles.headerRight}>
+                <div className={styles.aiBadge}>AI HEALING READY</div>
+                <button onClick={handlePatchAllAndContinue} className={styles.nextPhaseBtn}>
+                  {findings.length > 0 ? 'Patch All & Continue' : 'Continue to Phase 2'}
+                </button>
               </div>
+            </div>
 
-              <div style={{ fontSize: '11px', opacity: 0.5, marginBottom: '12px', textAlign: 'center' }}>
-                Scanned {scannedFiles} files
-              </div>
+            {/* Stats Row */}
+            <div className={styles.statsRow}>
+              <motion.div 
+                className={`${styles.statCard} ${styles.critical}`}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+              >
+                <div className={styles.statNumber}>{summary.critical}</div>
+                <div className={styles.statLabel}>Critical</div>
+              </motion.div>
+              <motion.div 
+                className={`${styles.statCard} ${styles.high}`}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+              >
+                <div className={styles.statNumber}>{summary.high}</div>
+                <div className={styles.statLabel}>High</div>
+              </motion.div>
+              <motion.div 
+                className={`${styles.statCard} ${styles.medium}`}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+              >
+                <div className={styles.statNumber}>{summary.medium}</div>
+                <div className={styles.statLabel}>Medium</div>
+              </motion.div>
+              <motion.div 
+                className={`${styles.statCard} ${styles.low}`}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4 }}
+              >
+                <div className={styles.statNumber}>{summary.low}</div>
+                <div className={styles.statLabel}>Low</div>
+              </motion.div>
+              <motion.div 
+                className={`${styles.statCard} ${styles.total}`}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5 }}
+              >
+                <div className={styles.statNumber}>{totalFindings}</div>
+                <div className={styles.statLabel}>Total Issues</div>
+              </motion.div>
+            </div>
 
-              <div className={styles.findingList}>
+            {/* Main Content */}
+            <div className={styles.mainContent}>
+              {/* Vulnerabilities Panel (Wide) */}
+              <div className={styles.vulnerabilitiesPanel}>
+                <div className={styles.panelHeader}>
+                  <h2>
+                    Detected Vulnerabilities
+                    <span className={styles.badgeCount}>{findings.length}</span>
+                  </h2>
+                </div>
+
                 {findings.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '32px', opacity: 0.5 }}>
-                    <div style={{ fontSize: '48px', marginBottom: '12px' }}>✅</div>
-                    <p>No vulnerabilities found!</p>
+                  <div className={styles.emptyState}>
+                    <div className={styles.emptyIcon}>✅</div>
+                    <h3>No Vulnerabilities Found</h3>
+                    <p>Your code passed all security checks!</p>
                   </div>
                 ) : (
-                  findings.map(f => (
-                    <div 
-                      key={f.id} 
-                      className={`${styles.findingItem} ${selectedFinding?.id === f.id ? styles.selected : ''}`}
-                      onClick={() => setSelectedFinding(f)}
-                    >
-                      <div className={styles.findingMeta}>
+                  <div className={styles.vulnerabilitiesTable}>
+                    {/* Table Header */}
+                    <div className={styles.tableHeader}>
+                      <span>Severity</span>
+                      <span>Issue</span>
+                      <span>File</span>
+                      <span>Line</span>
+                      <span>Action</span>
+                    </div>
+
+                    {/* Vulnerability Rows */}
+                    {findings.map((f, index) => (
+                      <motion.div
+                        key={f.id}
+                        className={`${styles.vulnRow} ${selectedFinding?.id === f.id ? styles.selected : ''} ${f.patched ? styles.patched : ''}`}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: index * 0.05 }}
+                        onClick={() => setSelectedFinding(f)}
+                        style={{ opacity: f.patched ? 0.5 : 1 }}
+                      >
                         <span 
                           className={styles.sevBadge}
                           style={{ 
@@ -364,118 +440,116 @@ export default function Phase1Page() {
                         >
                           {f.severity}
                         </span>
-                        <span className={styles.fName}>{f.file}</span>
-                      </div>
-                      <p className={styles.fIssue}>{f.issue}</p>
-                    </div>
-                  ))
+                        <span className={styles.vulnIssue}>
+                          {f.patched && '✓ '}{f.issue}
+                        </span>
+                        <span className={styles.vulnFile}>{f.file}</span>
+                        <span className={styles.vulnLine}>Line {f.line}</span>
+                        <div className={styles.vulnAction}>
+                          <button 
+                            className={styles.viewBtn}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setSelectedFinding(f)
+                            }}
+                          >
+                            {f.patched ? 'View' : 'Fix'}
+                          </button>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
                 )}
               </div>
-              
-              <button onClick={handlePatchAllAndContinue} className={styles.nextPhaseBtn}>
-                {findings.length > 0 ? 'Patch All & Continue' : 'Continue to Phase 2'}
-              </button>
-            </div>
 
-            <div className={styles.remediationMain}>
-              {selectedFinding ? (
-                <div className={styles.patchView}>
-                  <div className={styles.patchHeader}>
-                    <div className={styles.patchTitle}>
-                      <h2>Remediation Patch</h2>
-                      <p>Contextual fix for security issue in <code>{selectedFinding.file}</code></p>
-                    </div>
-                    <div className={styles.aiBadge}>AI HEALING ACTIVE</div>
-                  </div>
+              {/* Remediation Panel (Right Side) */}
+              <div className={styles.remediationPanel}>
+                <div className={styles.panelHeader}>
+                  <h2>Remediation</h2>
+                  {selectedFinding && <div className={styles.aiBadge}>AI PATCH</div>}
+                </div>
 
-                  <div style={{ 
-                    background: 'rgba(220, 38, 38, 0.1)', 
-                    border: '1px solid rgba(220, 38, 38, 0.3)',
-                    borderRadius: '12px',
-                    padding: '16px',
-                    marginBottom: '24px'
-                  }}>
-                    <div style={{ 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      gap: '12px',
-                      marginBottom: '8px'
-                    }}>
-                      <span style={{ 
-                        background: getSeverityColor(selectedFinding.severity),
-                        color: '#fff',
-                        padding: '4px 12px',
-                        borderRadius: '6px',
-                        fontSize: '12px',
-                        fontWeight: 'bold'
-                      }}>
-                        {selectedFinding.severity}
-                      </span>
-                      <span style={{ fontWeight: 'bold' }}>{selectedFinding.issue}</span>
-                    </div>
-                    <p style={{ opacity: 0.7, fontSize: '14px', margin: 0 }}>
-                      {selectedFinding.description}
-                    </p>
-                  </div>
-
-                  <div className={styles.editorContainer}>
-                    <div className={styles.editorPane}>
-                      <div className={styles.paneHeader}>CURRENT_VERSION (VULNERABLE)</div>
-                      <div className={`${styles.codeArea} ${styles.vulnerable}`}>
-                        <div className={styles.lineNumbers}>
-                          {selectedFinding.line - 1}<br />
-                          {selectedFinding.line}<br />
-                          {selectedFinding.line + 1}
+                <div className={styles.remediationContent}>
+                  {selectedFinding ? (
+                    <>
+                      {/* Issue Info */}
+                      <div className={styles.issueInfo}>
+                        <div className={styles.issueHeader}>
+                          <span 
+                            className={styles.sevBadge}
+                            style={{ 
+                              background: getSeverityColor(selectedFinding.severity),
+                              color: '#fff'
+                            }}
+                          >
+                            {selectedFinding.severity}
+                          </span>
+                          <span className={styles.issueTitle}>{selectedFinding.issue}</span>
                         </div>
-                        <div className={styles.codeContent}>
-                          {`// ... existing code\n${selectedFinding.currentCode}\n// ... existing code`}
+                        <p className={styles.issueDesc}>{selectedFinding.description}</p>
+                      </div>
+
+                      {/* Code Blocks */}
+                      <div className={styles.codeSection}>
+                        <div className={styles.codeBlock}>
+                          <div className={`${styles.codeBlockHeader} ${styles.vulnerable}`}>
+                            VULNERABLE CODE
+                          </div>
+                          <div className={`${styles.codeArea} ${styles.vulnerable}`}>
+                            <div className={styles.lineNumbers}>
+                              {selectedFinding.line - 1}<br />
+                              {selectedFinding.line}<br />
+                              {selectedFinding.line + 1}
+                            </div>
+                            <div className={styles.codeContent}>
+                              {`// ${selectedFinding.file}\n${selectedFinding.currentCode}\n// ...`}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className={styles.codeBlock}>
+                          <div className={`${styles.codeBlockHeader} ${styles.fixed}`}>
+                            AEGIS PATCH (SECURED)
+                          </div>
+                          <div className={`${styles.codeArea} ${styles.fixed}`}>
+                            <div className={styles.lineNumbers}>
+                              {selectedFinding.line - 1}<br />
+                              {selectedFinding.line}<br />
+                              {selectedFinding.line + 1}
+                            </div>
+                            <div className={styles.codeContent}>
+                              {`// ${selectedFinding.file}\n${selectedFinding.fixedCode}\n// ...`}
+                            </div>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    <div className={styles.editorPane}>
-                      <div className={styles.paneHeader}>AEGIS_PATCH (SECURED - EDITABLE)</div>
-                      <div className={`${styles.codeArea} ${styles.fixed}`}>
-                        <div className={styles.lineNumbers}>
-                          {selectedFinding.line - 1}<br />
-                          {selectedFinding.line}<br />
-                          {selectedFinding.line + 1}
-                        </div>
-                        <div 
-                          className={styles.codeContent} 
-                          contentEditable 
-                          suppressContentEditableWarning
-                          onBlur={(e) => {
-                            const updated = e.currentTarget.innerText;
-                            setFindings(prev => prev.map(f => f.id === selectedFinding.id ? {...f, fixedCode: updated} : f))
-                          }}
+
+                      {/* Action Buttons */}
+                      <div className={styles.actionButtons}>
+                        <button 
+                          className={styles.rejectBtn}
+                          onClick={() => setSelectedFinding(null)}
                         >
-                          {`// ... existing code\n${selectedFinding.fixedCode}\n// ... existing code`}
-                        </div>
+                          Dismiss
+                        </button>
+                        <button 
+                          className={styles.applyBtn}
+                          onClick={() => handleApplyPatch(selectedFinding)}
+                          disabled={selectedFinding.patched}
+                        >
+                          {selectedFinding.patched ? 'Applied' : 'Apply Patch'}
+                        </button>
                       </div>
+                    </>
+                  ) : (
+                    <div className={styles.noSelection}>
+                      <div className={styles.icon}>🛡️</div>
+                      <h3>Select a Vulnerability</h3>
+                      <p>Click on any issue to view AI-generated remediation patch</p>
                     </div>
-                  </div>
-
-                  <div className={styles.patchFooter}>
-                    <button className={styles.rejectBtn}>Discard</button>
-                    <button 
-                      className={styles.applyBtn}
-                      onClick={() => handleApplyPatch(selectedFinding)}
-                    >
-                      Apply Patch
-                    </button>
-                  </div>
+                  )}
                 </div>
-              ) : (
-                <div className={styles.emptyResults}>
-                  <div className={styles.emptyIcon}>🛡️</div>
-                  <h2>Security Analysis Complete</h2>
-                  <p>
-                    {findings.length > 0 
-                      ? `Found ${findings.length} security issues. Select an issue to review AI-generated patches.`
-                      : 'No vulnerabilities found in initial sweep. Your code is secure!'}
-                  </p>
-                </div>
-              )}
+              </div>
             </div>
           </motion.div>
         )}
