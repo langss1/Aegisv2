@@ -17,13 +17,13 @@ async function deployToVercel(repoUrl: string, projectName: string): Promise<{
 }> {
   const token = process.env.VERCEL_TOKEN
   if (!token) {
-    throw new Error('VERCEL_TOKEN not configured')
+    throw new Error('VERCEL_TOKEN not configured. Add your token to .env file.')
   }
 
   // Parse GitHub URL to get owner and repo
   const match = repoUrl.match(/github\.com\/([^\/]+)\/([^\/\.]+)/)
   if (!match) {
-    throw new Error('Invalid GitHub URL format')
+    throw new Error('Invalid GitHub URL format. Use: https://github.com/owner/repo')
   }
   const [, owner, repo] = match
 
@@ -34,11 +34,37 @@ async function deployToVercel(repoUrl: string, projectName: string): Promise<{
     .replace(/-+/g, '-')
     .substring(0, 50)
 
-  // Step 1: Create or get project
-  let projectId: string
+  // First, verify token is valid
+  const verifyRes = await fetch(`${VERCEL_API}/v2/user`, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  })
   
-  try {
-    // Try to create new project
+  if (!verifyRes.ok) {
+    const verifyData = await verifyRes.json()
+    throw new Error(`Invalid Vercel token: ${verifyData.error?.message || 'Not authorized'}`)
+  }
+
+  // Check if repo is already connected to Vercel
+  const projectsRes = await fetch(`${VERCEL_API}/v9/projects?search=${repo}`, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  })
+  const projectsData = await projectsRes.json()
+  
+  let projectId: string | null = null
+  
+  // Find existing project linked to this repo
+  if (projectsData.projects) {
+    const existingProject = projectsData.projects.find((p: any) => 
+      p.link?.repo === `${owner}/${repo}` || p.name.includes(cleanName)
+    )
+    if (existingProject) {
+      projectId = existingProject.id
+      console.log('Found existing project:', existingProject.name)
+    }
+  }
+
+  // If no existing project, try to create one
+  if (!projectId) {
     const createProjectRes = await fetch(`${VERCEL_API}/v9/projects`, {
       method: 'POST',
       headers: {
@@ -51,20 +77,21 @@ async function deployToVercel(repoUrl: string, projectName: string): Promise<{
           type: 'github',
           repo: `${owner}/${repo}`
         },
-        framework: null // Auto-detect
+        framework: null
       })
     })
 
     const projectData = await createProjectRes.json()
     
     if (projectData.error) {
-      // If project exists or other error, try direct deployment
-      console.log('Project creation response:', projectData)
+      // GitHub repo not connected to Vercel
+      if (projectData.error.code === 'not_authorized' || projectData.error.message?.includes('not authorized')) {
+        throw new Error(`GitHub repo not connected to Vercel. Please import ${owner}/${repo} at https://vercel.com/new first.`)
+      }
+      throw new Error(projectData.error.message || 'Failed to create project')
     }
     
-    projectId = projectData.id || `aegis-${cleanName}`
-  } catch (e) {
-    projectId = `aegis-${cleanName}`
+    projectId = projectData.id
   }
 
   // Step 2: Create deployment from GitHub
