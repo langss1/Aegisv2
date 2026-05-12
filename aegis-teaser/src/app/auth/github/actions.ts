@@ -43,83 +43,86 @@ export async function analyzeGitHubRepo(repoFullName: string) {
       'Accept': 'application/vnd.github.v3+json'
     }
 
-    // 1. Fetch Full Recursive Tree (Bedah Seluruh Isi Repo)
+    // 1. Fetch Full Recursive Tree
     const treeRes = await fetch(`https://api.github.com/repos/${repoFullName}/git/trees/main?recursive=1`, { headers })
     const treeData = treeRes.ok ? await treeRes.json() : { tree: [] }
-    const files = treeData.tree.map((f: any) => f.path)
+    const tree = treeData.tree || []
+    const filePaths = tree.map((f: any) => f.path)
 
-    const detected = []
-    const architecture = []
-    
-    // 2. Neural Architecture Mapping Logic
-    // Detect Next.js Router Type
-    if (files.some((f: string) => f.startsWith('src/app') || f.startsWith('app/'))) {
-      detected.push('Next.js 14/15 (App Router)')
-      architecture.push('Modern App-Directory Architecture')
-    } else if (files.some((f: string) => f.startsWith('src/pages') || f.startsWith('pages/'))) {
-      detected.push('Next.js (Legacy Pages Router)')
-      architecture.push('Classic Pages Architecture')
-    }
+    const detected = new Set<string>()
+    const insights = []
 
-    // Detect Logic Patterns
-    if (files.some((f: string) => f.includes('actions/'))) architecture.push('Server Actions Pattern')
-    if (files.some((f: string) => f.includes('middleware.ts'))) architecture.push('Edge Middleware Layer')
-    if (files.some((f: string) => f.includes('hooks/'))) architecture.push('Custom React Hooks Layer')
-    if (files.some((f: string) => f.includes('components/ui/'))) architecture.push('Atomic UI System (Shadcn/UI)')
+    // 2. Identify High-Value Files for Deep Read
+    const highValueFiles = tree.filter((f: any) => 
+      ['README.md', 'package.json', 'docker-compose.yml', 'Dockerfile', '.env.example', 'vercel.json', 'next.config.js', 'prisma/schema.prisma'].includes(f.path.split('/').pop() || '')
+    )
 
-    // Detect Infrastructure (Extreme Detail)
-    if (files.some((f: string) => f.includes('.github/workflows'))) detected.push('GitHub Actions CI/CD')
-    if (files.some((f: string) => f.includes('docker-compose'))) detected.push('Multi-Container Docker')
-    if (files.some((f: string) => f.includes('vercel.json'))) detected.push('Vercel Edge Deployment')
-    if (files.some((f: string) => f.includes('fly.toml'))) detected.push('Fly.io Infrastructure')
-    if (files.some((f: string) => f.includes('terraform/'))) detected.push('Terraform (IaC)')
+    // 3. Parallel Deep Analysis (Membuka Isi File)
+    const analysisPromises = highValueFiles.map(async (file: any) => {
+      try {
+        const res = await fetch(file.url, { headers })
+        const data = await res.json()
+        const content = atob(data.content || '')
+        const fileName = file.path.toLowerCase()
 
-    // 3. Dependency Check (Read package.json if exists)
-    const packageFile = treeData.tree.find((f: any) => f.path.endsWith('package.json'))
-    if (packageFile) {
-      const fileRes = await fetch(packageFile.url, { headers })
-      const fileData = await fileRes.json()
-      const content = JSON.parse(atob(fileData.content))
-      const allDeps = { ...content.dependencies, ...content.devDependencies }
+        // Analyze README.md
+        if (fileName.includes('readme.md')) {
+          if (content.toLowerCase().includes('postgresql')) detected.add('PostgreSQL Database')
+          if (content.toLowerCase().includes('redis')) detected.add('Redis Cache')
+          if (content.toLowerCase().includes('docker')) detected.add('Dockerized Infrastructure')
+        }
 
-      // DB & State
-      if (allDeps['prisma']) detected.push('Prisma ORM (Relational)')
-      if (allDeps['drizzle-orm']) detected.push('Drizzle ORM (Type-Safe)')
-      if (allDeps['@tanstack/react-query']) detected.push('React Query (Server State)')
-      if (allDeps['zustand']) detected.push('Zustand (Global State)')
-      
-      // Typescript Detail
-      if (allDeps['typescript']) {
-        detected.push('TypeScript (Strict Mode Detected)')
-      }
-    }
+        // Analyze .env.example
+        if (fileName.includes('.env.example')) {
+          if (content.includes('STRIPE_')) detected.add('Stripe Payments')
+          if (content.includes('AWS_')) detected.add('AWS Infrastructure')
+          if (content.includes('SUPABASE_')) detected.add('Supabase Backend')
+        }
 
-    // 4. Language Percentage
-    const langRes = await fetch(`https://api.github.com/repos/${repoFullName}/languages`, { headers })
-    const languages = langRes.ok ? await langRes.json() : {}
-    const topLangs = Object.keys(languages).slice(0, 2)
+        // Analyze docker-compose
+        if (fileName.includes('docker-compose')) {
+          if (content.includes('image: postgres')) detected.add('Postgres Container (Self-Hosted)')
+          if (content.includes('image: redis')) detected.add('Redis Container')
+        }
 
-    // 5. Intelligent Deduplication
-    let finalStack = [...detected, ...architecture]
-    
-    // Jika sudah ada "TypeScript (Strict Mode)", jangan tampilkan "TypeScript" biasa lagi
-    if (finalStack.includes('TypeScript (Strict Mode Detected)')) {
-      finalStack = finalStack.filter(s => s !== 'TypeScript')
-    }
-
-    // Masukkan bahasa utama jika belum ada
-    topLangs.forEach(lang => {
-      if (!finalStack.some(s => s.toLowerCase().includes(lang.toLowerCase()))) {
-        finalStack.push(lang)
+        // Analyze package.json (Deep Dependencies)
+        if (fileName.includes('package.json')) {
+          const pkg = JSON.parse(content)
+          const all = { ...pkg.dependencies, ...pkg.devDependencies }
+          if (all['next']) detected.add(`Next.js ${all['next']}`)
+          if (all['typescript']) detected.add('Strict TypeScript Architecture')
+          if (all['prisma']) detected.add('Prisma ORM Layer')
+          if (all['tailwindcss']) detected.add('Tailwind CSS Design System')
+        }
+      } catch (e) {
+        console.error('File analysis error:', file.path, e)
       }
     })
 
+    await Promise.all(analysisPromises)
+
+    // 4. Structural Logic Mapping
+    if (filePaths.some(p => p.startsWith('src/app') || p.startsWith('app/'))) detected.add('Next.js App Router (Modern Architecture)')
+    if (filePaths.some(p => p.includes('actions/'))) detected.add('Server Actions Communication Pattern')
+    if (filePaths.some(p => p.includes('middleware.ts'))) detected.add('Edge Security Middleware')
+    if (filePaths.some(p => p.includes('.github/workflows'))) detected.add('GitHub Actions CI/CD Pipeline')
+
+    // 5. Language Stats
+    const langRes = await fetch(`https://api.github.com/repos/${repoFullName}/languages`, { headers })
+    const languages = langRes.ok ? await langRes.json() : {}
+    Object.keys(languages).slice(0, 2).forEach(l => {
+      if (l !== 'CSS' && l !== 'HTML') detected.add(l)
+    })
+
+    // Deduplicate and filter
+    const finalStack = Array.from(detected)
+
     return { 
-      stack: Array.from(new Set(finalStack)).filter(s => s !== 'CSS' && s !== 'HTML'), // Filter out noise
-      isDetailed: true
+      stack: finalStack,
+      isDeepAudit: true
     }
   } catch (err) {
-    console.error('Deep Analysis error:', err)
-    return { stack: ['Analysis Blocked'], error: 'Deep Neural Analysis failed' }
+    console.error('Deep Audit error:', err)
+    return { stack: ['Deep Audit Interrupted'], error: 'Deep analysis failed' }
   }
 }
