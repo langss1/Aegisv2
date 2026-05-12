@@ -215,19 +215,23 @@
 }
 
 .navFooter {
-  padding: 20px 24px;
+  padding: 20px 16px;
   border-top: 1px solid #18181b;
+  overflow: hidden;
 }
 
 .userBrief {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
+  overflow: hidden;
+  width: 100%;
 }
 
 .userAvatar {
   width: 32px;
   height: 32px;
+  min-width: 32px;
   background: #18181b;
   border-radius: 8px;
   display: flex;
@@ -236,11 +240,13 @@
   font-weight: 900;
   color: #dc2626;
   border: 1px solid #27272a;
+  flex-shrink: 0;
 }
 
 .userMeta {
   overflow: hidden;
-  max-width: 140px;
+  flex: 1;
+  min-width: 0;
 }
 
 .userMeta strong {
