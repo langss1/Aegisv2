@@ -20,12 +20,14 @@ export default function DashboardLayout({
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [showModal, setShowModal] = useState(false)
 
-  useState(() => {
+  useEffect(() => {
     const supabase = createClient()
+    // Skip if Supabase not configured
+    if (!supabase) return
     supabase.auth.getUser().then(({ data: { user } }) => {
       setUser(user)
     })
-  })
+  }, [])
 
   const handleFetchRepos = async () => {
     setLoadingRepos(true)
@@ -50,6 +52,7 @@ export default function DashboardLayout({
     { name: 'Ingestion', href: '/phases/phase0', phase: '0' },
     { name: 'SAST & Heal', href: '/phases/phase1', phase: '1' },
     { name: 'DAST', href: '/phases/phase2', phase: '2' },
+    { name: 'Monitor', href: '/phases/phase3', phase: '3' },
   ]
 
   return (
