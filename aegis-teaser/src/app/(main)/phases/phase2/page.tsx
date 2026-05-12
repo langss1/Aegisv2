@@ -5,8 +5,9 @@ import styles from './phase2.module.css'
 import { motion, AnimatePresence } from 'framer-motion'
 
 interface DeploymentState {
-  status: 'idle' | 'cloning' | 'installing' | 'starting' | 'tunneling' | 'deployed' | 'testing' | 'complete' | 'fixing' | 'fixed'
-  ngrokUrl: string | null
+  status: 'idle' | 'deploying' | 'building' | 'deployed' | 'testing' | 'complete' | 'fixing' | 'fixed' | 'error'
+  deploymentUrl: string | null
+  deploymentId: string | null
   logs: string[]
   progress: number
   error: string | null
@@ -28,7 +29,8 @@ interface PentestResult {
 export default function Phase2Page() {
   const [deployment, setDeployment] = useState<DeploymentState>({
     status: 'idle',
-    ngrokUrl: null,
+    deploymentUrl: null,
+    deploymentId: null,
     logs: [],
     progress: 0,
     error: null
@@ -37,6 +39,8 @@ export default function Phase2Page() {
   const [currentTest, setCurrentTest] = useState<string | null>(null)
   const [selectedVuln, setSelectedVuln] = useState<PentestResult | null>(null)
   const [fixingId, setFixingId] = useState<number | null>(null)
+  const [repoInput, setRepoInput] = useState('')
+  const [showRepoInput, setShowRepoInput] = useState(false)
   const terminalRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
 
@@ -56,86 +60,134 @@ export default function Phase2Page() {
     const contextStr = localStorage.getItem('aegis_scan_context')
     if (contextStr) {
       const context = JSON.parse(contextStr)
-      startDeployment(context.repoUrl, context.repoName)
+      if (context.repoUrl) {
+        startVercelDeployment(context.repoUrl, context.repoName)
+      } else {
+        setShowRepoInput(true)
+      }
     } else {
-      startDemoDeployment()
+      setShowRepoInput(true)
     }
   }, [])
 
-  const startDemoDeployment = async () => {
-    const demoSteps = [
-      { status: 'cloning', message: 'Cloning repository from GitHub...', progress: 10 },
-      { status: 'cloning', message: 'Repository cloned successfully (47 files)', progress: 20 },
-      { status: 'installing', message: 'Installing dependencies with npm...', progress: 30 },
-      { status: 'installing', message: 'Dependencies installed (128 packages)', progress: 45 },
-      { status: 'starting', message: 'Starting application server on port 3847...', progress: 55 },
-      { status: 'starting', message: 'Server started successfully', progress: 65 },
-      { status: 'tunneling', message: 'Creating ngrok tunnel...', progress: 75 },
-      { status: 'tunneling', message: 'Establishing secure connection...', progress: 85 },
-      { status: 'deployed', message: 'Ngrok tunnel created!', progress: 95 },
-    ]
-
-    setDeployment(prev => ({ ...prev, status: 'cloning' }))
-    addLog('Starting deployment process...')
-
-    for (let i = 0; i < demoSteps.length; i++) {
-      await new Promise(resolve => setTimeout(resolve, 800))
-      const step = demoSteps[i]
-      addLog(step.message)
-      setDeployment(prev => ({
-        ...prev,
-        status: step.status as DeploymentState['status'],
-        progress: step.progress
-      }))
-    }
-
-    const sessionId = Math.random().toString(36).substring(2, 10)
-    const ngrokUrl = `https://${sessionId}.ngrok-free.app`
-    
-    await new Promise(resolve => setTimeout(resolve, 500))
-    addLog(`Public URL: ${ngrokUrl}`)
-    setDeployment(prev => ({
-      ...prev,
-      status: 'deployed',
-      ngrokUrl,
-      progress: 100
-    }))
-
-    await new Promise(resolve => setTimeout(resolve, 1500))
-    startPentest(ngrokUrl)
-  }
-
-  const startDeployment = async (repoUrl: string, repoName: string) => {
-    setDeployment(prev => ({ ...prev, status: 'cloning' }))
-    addLog(`Starting deployment for ${repoName}...`)
+  const startVercelDeployment = async (repoUrl: string, repoName: string) => {
+    setShowRepoInput(false)
+    setDeployment(prev => ({ ...prev, status: 'deploying', progress: 10 }))
+    addLog(`Starting Vercel deployment for ${repoName || repoUrl}...`)
+    addLog(`Repository: ${repoUrl}`)
 
     try {
-      const sessionId = Math.random().toString(36).substring(2, 15)
-      
-      const response = await fetch('/api/ngrok', {
+      // Step 1: Initiate deployment
+      addLog('Connecting to Vercel API...')
+      setDeployment(prev => ({ ...prev, progress: 20 }))
+
+      const response = await fetch('/api/vercel', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'deploy', repoUrl, sessionId })
+        body: JSON.stringify({ 
+          action: 'deploy', 
+          repoUrl, 
+          projectName: repoName || 'target-app'
+        })
       })
 
       const data = await response.json()
-      if (data.error) throw new Error(data.error)
+      
+      if (data.error) {
+        throw new Error(data.error)
+      }
 
-      addLog(`Deployed to: ${data.ngrokUrl}`)
+      addLog(`Deployment initiated: ${data.deploymentId}`)
+      setDeployment(prev => ({ 
+        ...prev, 
+        status: 'building',
+        deploymentId: data.deploymentId,
+        progress: 40 
+      }))
+
+      // Step 2: Poll for deployment status
+      addLog('Building application on Vercel...')
+      const finalUrl = await pollDeploymentStatus(data.deploymentId)
+
+      // Step 3: Deployment ready
+      addLog(`Deployment successful!`)
+      addLog(`Live URL: ${finalUrl}`)
       setDeployment(prev => ({
         ...prev,
         status: 'deployed',
-        ngrokUrl: data.ngrokUrl,
+        deploymentUrl: finalUrl,
         progress: 100
       }))
 
-      await new Promise(resolve => setTimeout(resolve, 1500))
-      startPentest(data.ngrokUrl)
+      // Save to context
+      localStorage.setItem('aegis_deployment_url', finalUrl)
+
+      // Wait a moment then start pentest
+      await new Promise(resolve => setTimeout(resolve, 2000))
+      startPentest(finalUrl)
 
     } catch (error: any) {
-      addLog(`Error: ${error.message}`)
-      startDemoDeployment()
+      console.error('Deployment error:', error)
+      addLog(`ERROR: ${error.message}`)
+      
+      if (error.message.includes('VERCEL_TOKEN')) {
+        addLog('Please add your Vercel token to .env file')
+        addLog('Get token from: https://vercel.com/account/tokens')
+      }
+      
+      setDeployment(prev => ({
+        ...prev,
+        status: 'error',
+        error: error.message
+      }))
     }
+  }
+
+  const pollDeploymentStatus = async (deploymentId: string): Promise<string> => {
+    const maxAttempts = 60 // 5 minutes max
+    let attempts = 0
+
+    while (attempts < maxAttempts) {
+      await new Promise(resolve => setTimeout(resolve, 5000)) // Check every 5 seconds
+      
+      try {
+        const response = await fetch(`/api/vercel?deploymentId=${deploymentId}`)
+        const data = await response.json()
+
+        if (data.status === 'READY') {
+          return data.url
+        } else if (data.status === 'ERROR' || data.status === 'CANCELED') {
+          throw new Error(`Deployment ${data.status.toLowerCase()}`)
+        }
+
+        // Update progress based on status
+        const progress = data.status === 'BUILDING' ? 60 : 
+                        data.status === 'QUEUED' ? 45 : 50
+        
+        setDeployment(prev => ({ ...prev, progress }))
+        addLog(`Build status: ${data.status}...`)
+        
+      } catch (e: any) {
+        console.error('Status check error:', e)
+      }
+      
+      attempts++
+    }
+
+    throw new Error('Deployment timeout - please check Vercel dashboard')
+  }
+
+  const handleManualDeploy = () => {
+    if (!repoInput.trim()) return
+    
+    // Validate GitHub URL
+    if (!repoInput.includes('github.com')) {
+      addLog('ERROR: Please enter a valid GitHub repository URL')
+      return
+    }
+
+    const repoName = repoInput.split('/').pop()?.replace('.git', '') || 'target-app'
+    startVercelDeployment(repoInput, repoName)
   }
 
   const startPentest = async (targetUrl: string) => {
@@ -330,16 +382,15 @@ app.post('/api/login', loginLimiter, async (req, res) => {
 
   const getStatusText = () => {
     switch (deployment.status) {
-      case 'cloning': return 'Cloning Repository...'
-      case 'installing': return 'Installing Dependencies...'
-      case 'starting': return 'Starting Server...'
-      case 'tunneling': return 'Creating Ngrok Tunnel...'
+      case 'deploying': return 'Connecting to Vercel...'
+      case 'building': return 'Building on Vercel...'
       case 'deployed': return 'Deployed!'
       case 'testing': return `Testing: ${currentTest || 'Initializing...'}`
       case 'complete': return 'Pentest Complete'
       case 'fixing': return 'Applying Patches...'
       case 'fixed': return 'All Fixed!'
-      default: return 'Preparing...'
+      case 'error': return 'Deployment Failed'
+      default: return 'Ready to Deploy'
     }
   }
 
@@ -363,9 +414,9 @@ app.post('/api/login', loginLimiter, async (req, res) => {
                   key={i} 
                   className={`${styles.logLine} ${
                     line.includes('VULN') ? styles.logVuln : 
-                    line.includes('PASS') || line.includes('Fixed') || line.includes('✓') ? styles.logPass : 
+                    line.includes('PASS') || line.includes('successful') || line.includes('✓') ? styles.logPass : 
                     line.includes('FIX') ? styles.logFix :
-                    line.includes('Error') ? styles.logError : ''
+                    line.includes('ERROR') || line.includes('Error') ? styles.logError : ''
                   }`}
                 >
                   {line}
@@ -376,6 +427,11 @@ app.post('/api/login', loginLimiter, async (req, res) => {
                   <span className={styles.spinner}>⠋</span> Testing {currentTest}...
                 </div>
               )}
+              {deployment.status === 'building' && (
+                <div className={styles.logLine}>
+                  <span className={styles.spinner}>⠋</span> Building on Vercel...
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -383,7 +439,44 @@ app.post('/api/login', loginLimiter, async (req, res) => {
         {/* Right: Status & Results */}
         <div className={styles.statusArea}>
           <AnimatePresence mode="wait">
-            {deployment.status !== 'complete' && deployment.status !== 'fixing' && deployment.status !== 'fixed' ? (
+            {/* Repo Input Form */}
+            {showRepoInput && deployment.status === 'idle' ? (
+              <motion.div
+                key="repo-input"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className={styles.statusCard}
+              >
+                <div className={styles.vercelBrand}>
+                  <div className={styles.vercelIcon}>▲</div>
+                  <span>Vercel Deploy</span>
+                </div>
+
+                <h2 className={styles.statusTitle}>Deploy Target Application</h2>
+                <p style={{ opacity: 0.6, marginBottom: '24px', fontSize: '14px' }}>
+                  Enter a GitHub repository URL to deploy and pentest
+                </p>
+
+                <div className={styles.repoInputGroup}>
+                  <input
+                    type="text"
+                    value={repoInput}
+                    onChange={(e) => setRepoInput(e.target.value)}
+                    placeholder="https://github.com/owner/repo"
+                    className={styles.repoInput}
+                    onKeyDown={(e) => e.key === 'Enter' && handleManualDeploy()}
+                  />
+                  <button onClick={handleManualDeploy} className={styles.deployBtn}>
+                    Deploy & Test
+                  </button>
+                </div>
+
+                <div style={{ marginTop: '20px', opacity: 0.5, fontSize: '12px' }}>
+                  <p>Supported: Next.js, React, Vue, Node.js, Static sites</p>
+                </div>
+              </motion.div>
+            ) : deployment.status !== 'complete' && deployment.status !== 'fixing' && deployment.status !== 'fixed' ? (
               <motion.div
                 key="deploying"
                 initial={{ opacity: 0 }}
@@ -391,50 +484,67 @@ app.post('/api/login', loginLimiter, async (req, res) => {
                 exit={{ opacity: 0 }}
                 className={styles.statusCard}
               >
-                <div className={styles.ngrokBrand}>
-                  <div className={styles.ngrokIcon}>🌐</div>
-                  <span>ngrok</span>
+                <div className={styles.vercelBrand}>
+                  <div className={styles.vercelIcon}>▲</div>
+                  <span>Vercel</span>
                 </div>
 
                 <h2 className={styles.statusTitle}>{getStatusText()}</h2>
 
-                <div className={styles.progressContainer}>
-                  <div className={styles.progressBar}>
-                    <motion.div 
-                      className={styles.progressFill}
-                      initial={{ width: 0 }}
-                      animate={{ width: `${deployment.progress}%` }}
-                    />
+                {deployment.status === 'error' ? (
+                  <div className={styles.errorBox}>
+                    <p>{deployment.error}</p>
+                    <button 
+                      onClick={() => {
+                        setDeployment(prev => ({ ...prev, status: 'idle', error: null, logs: [] }))
+                        setShowRepoInput(true)
+                      }}
+                      className={styles.retryBtn}
+                    >
+                      Try Again
+                    </button>
                   </div>
-                  <span className={styles.progressText}>{deployment.progress}%</span>
-                </div>
-
-                {deployment.ngrokUrl && (
-                  <motion.div className={styles.ngrokUrlBox} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                    <div className={styles.urlLabel}>PUBLIC URL</div>
-                    <a href={deployment.ngrokUrl} target="_blank" rel="noopener noreferrer" className={styles.ngrokUrl}>
-                      {deployment.ngrokUrl}
-                    </a>
-                    <div className={styles.urlStatus}>
-                      <span className={styles.statusDot}></span>
-                      Live & Accessible
-                    </div>
-                  </motion.div>
-                )}
-
-                <div className={styles.deploySteps}>
-                  {['Clone', 'Install', 'Start', 'Tunnel', 'Test'].map((step, i) => {
-                    const stepNum = i + 1
-                    const isActive = deployment.progress >= (stepNum * 20)
-                    const isCurrent = deployment.progress >= ((stepNum - 1) * 20) && deployment.progress < (stepNum * 20)
-                    return (
-                      <div key={i} className={`${styles.step} ${isActive ? styles.stepDone : ''} ${isCurrent ? styles.stepActive : ''}`}>
-                        <div className={styles.stepIcon}>{isActive ? '✓' : stepNum}</div>
-                        <span>{step}</span>
+                ) : (
+                  <>
+                    <div className={styles.progressContainer}>
+                      <div className={styles.progressBar}>
+                        <motion.div 
+                          className={styles.progressFill}
+                          initial={{ width: 0 }}
+                          animate={{ width: `${deployment.progress}%` }}
+                        />
                       </div>
-                    )
-                  })}
-                </div>
+                      <span className={styles.progressText}>{deployment.progress}%</span>
+                    </div>
+
+                    {deployment.deploymentUrl && (
+                      <motion.div className={styles.urlBox} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                        <div className={styles.urlLabel}>LIVE URL</div>
+                        <a href={deployment.deploymentUrl} target="_blank" rel="noopener noreferrer" className={styles.deploymentUrl}>
+                          {deployment.deploymentUrl}
+                        </a>
+                        <div className={styles.urlStatus}>
+                          <span className={styles.statusDot}></span>
+                          Production Ready
+                        </div>
+                      </motion.div>
+                    )}
+
+                    <div className={styles.deploySteps}>
+                      {['Connect', 'Build', 'Deploy', 'Test'].map((step, i) => {
+                        const stepNum = i + 1
+                        const isActive = deployment.progress >= (stepNum * 25)
+                        const isCurrent = deployment.progress >= ((stepNum - 1) * 25) && deployment.progress < (stepNum * 25)
+                        return (
+                          <div key={i} className={`${styles.step} ${isActive ? styles.stepDone : ''} ${isCurrent ? styles.stepActive : ''}`}>
+                            <div className={styles.stepIcon}>{isActive ? '✓' : stepNum}</div>
+                            <span>{step}</span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </>
+                )}
               </motion.div>
             ) : selectedVuln ? (
               <motion.div
@@ -493,7 +603,7 @@ app.post('/api/login', loginLimiter, async (req, res) => {
                     {deployment.status === 'fixed' ? 'ALL FIXED!' : 'PENTEST COMPLETE'}
                   </div>
                   <h2>Security Assessment</h2>
-                  <p>Target: {deployment.ngrokUrl}</p>
+                  <p>Target: {deployment.deploymentUrl}</p>
                 </div>
 
                 <div className={styles.statsRow}>
