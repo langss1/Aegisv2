@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
+import Link from 'next/link'
 import styles from './HeroSection.module.css'
 
 const WORDS = ['Secure', 'Trusted', 'Protected', 'Defended', 'Resilient']
@@ -95,12 +96,12 @@ export default function HeroSection() {
             </svg>
             Watch Demo
           </a>
-          <a href="#cta" className="btn-outline" id="hero-early-access">
+          <Link href="/login" className="btn-outline" id="hero-early-access">
             Get Early Access
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
               <path d="M5 12h14M12 5l7 7-7 7" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
             </svg>
-          </a>
+          </Link>
         </div>
 
         {/* Stats row */}

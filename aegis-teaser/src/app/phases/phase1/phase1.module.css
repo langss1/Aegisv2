@@ -1,0 +1,171 @@
+.content {
+  max-width: 900px;
+  margin: 0 auto;
+  animation: fade-in 0.5s ease-out;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.header { margin-bottom: 40px; }
+
+.badge {
+  display: inline-block;
+  padding: 4px 12px;
+  background: rgba(220, 38, 38, 0.15);
+  border: 1px solid rgba(220, 38, 38, 0.3);
+  border-radius: 999px;
+  color: #f87171;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 16px;
+}
+
+.title {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 32px;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+
+.subtitle {
+  font-size: 16px;
+  color: rgba(255, 255, 255, 0.5);
+  line-height: 1.6;
+}
+
+.scannerCard {
+  background: rgba(15, 3, 3, 0.5);
+  border: 1px solid rgba(220, 38, 38, 0.2);
+  border-radius: 20px;
+  padding: 32px;
+  margin-bottom: 24px;
+}
+
+.scanStatus { margin-bottom: 32px; }
+
+.statusInfo {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 600;
+}
+
+.statusText { color: rgba(255, 255, 255, 0.8); }
+.percentage { color: #ef4444; }
+
+.progressBar {
+  height: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  background: linear-gradient(90deg, #7f1d1d, #dc2626);
+  box-shadow: 0 0 15px rgba(220, 38, 38, 0.5);
+  transition: width 0.3s ease;
+}
+
+.findingsArea h3 {
+  font-size: 14px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.3);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 16px;
+}
+
+.findingList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.empty {
+  padding: 40px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.2);
+  font-style: italic;
+  font-size: 14px;
+}
+
+.findingItem {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-left: 3px solid #6b7280;
+  border-radius: 8px;
+  padding: 16px;
+  animation: slide-in 0.3s ease-out forwards;
+}
+
+@keyframes slide-in {
+  from { opacity: 0; transform: translateX(-10px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.findingItem[data-severity="Critical"] { border-left-color: #ef4444; background: rgba(239, 68, 68, 0.05); }
+.findingItem[data-severity="High"] { border-left-color: #f97316; }
+.findingItem[data-severity="Medium"] { border-left-color: #fbbf24; }
+
+.findingHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.severityTag {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+[data-severity="Critical"] .severityTag { color: #f87171; background: rgba(239, 68, 68, 0.1); }
+[data-severity="High"] .severityTag { color: #fb923c; }
+
+.fileName { font-size: 14px; font-weight: 600; color: rgba(255, 255, 255, 0.8); }
+.issueText { font-size: 13px; color: rgba(255, 255, 255, 0.5); }
+
+.terminal {
+  background: #030000;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.terminalHeader {
+  background: rgba(255, 255, 255, 0.05);
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dot { width: 10px; height: 10px; border-radius: 50%; background: rgba(255, 255, 255, 0.1); }
+.termTitle { font-size: 11px; color: rgba(255, 255, 255, 0.3); margin-left: 10px; }
+
+.termBody {
+  padding: 20px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  color: #22c55e;
+  line-height: 1.6;
+  min-height: 180px;
+}
+
+.blinker {
+  display: inline-block;
+  animation: blink 1s step-end infinite;
+}
+
+@keyframes blink { 50% { opacity: 0; } }

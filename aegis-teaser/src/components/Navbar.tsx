@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import styles from './Navbar.module.css'
 
 export default function Navbar() {
@@ -33,9 +34,9 @@ export default function Navbar() {
         </ul>
 
         <div className={styles.navActions}>
-          <a href="#cta" className="btn-primary" style={{ padding: '10px 24px', fontSize: '14px' }}>
+          <Link href="/login" className="btn-primary" style={{ padding: '10px 24px', fontSize: '14px' }} id="nav-login-btn">
             Get Early Access
-          </a>
+          </Link>
           <button className={styles.hamburger} onClick={() => setMenuOpen(!menuOpen)} aria-label="menu">
             <span /><span /><span />
           </button>

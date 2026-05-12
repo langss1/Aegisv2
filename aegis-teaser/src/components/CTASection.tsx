@@ -1,14 +1,21 @@
 'use client'
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import styles from './CTASection.module.css'
 
 export default function CTASection() {
   const [email, setEmail] = useState('')
   const [submitted, setSubmitted] = useState(false)
+  const router = useRouter()
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (email) setSubmitted(true)
+    if (email) {
+      setSubmitted(true)
+      setTimeout(() => {
+        router.push('/login')
+      }, 1500)
+    }
   }
 
   return (
