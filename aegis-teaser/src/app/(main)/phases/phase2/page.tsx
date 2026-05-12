@@ -41,6 +41,7 @@ export default function Phase2Page() {
   const [fixingId, setFixingId] = useState<number | null>(null)
   const [repoInput, setRepoInput] = useState('')
   const [showRepoInput, setShowRepoInput] = useState(false)
+  const [deployMode, setDeployMode] = useState<'auto' | 'direct'>('direct')
   const terminalRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
 
@@ -180,14 +181,34 @@ export default function Phase2Page() {
   const handleManualDeploy = () => {
     if (!repoInput.trim()) return
     
-    // Validate GitHub URL
-    if (!repoInput.includes('github.com')) {
-      addLog('ERROR: Please enter a valid GitHub repository URL')
-      return
+    if (deployMode === 'direct') {
+      // Direct URL mode - skip deployment, go straight to pentest
+      if (!repoInput.startsWith('http')) {
+        addLog('ERROR: Please enter a valid URL (https://...)')
+        return
+      }
+      setShowRepoInput(false)
+      setDeployment(prev => ({ 
+        ...prev, 
+        status: 'deployed',
+        deploymentUrl: repoInput,
+        progress: 100
+      }))
+      addLog(`Target URL: ${repoInput}`)
+      addLog('Skipping deployment - using direct URL')
+      
+      setTimeout(() => {
+        startPentest(repoInput)
+      }, 1000)
+    } else {
+      // Auto deploy mode (Vercel)
+      if (!repoInput.includes('github.com')) {
+        addLog('ERROR: Please enter a valid GitHub repository URL')
+        return
+      }
+      const repoName = repoInput.split('/').pop()?.replace('.git', '') || 'target-app'
+      startVercelDeployment(repoInput, repoName)
     }
-
-    const repoName = repoInput.split('/').pop()?.replace('.git', '') || 'target-app'
-    startVercelDeployment(repoInput, repoName)
   }
 
   const startPentest = async (targetUrl: string) => {
@@ -429,13 +450,34 @@ export default function Phase2Page() {
                 className={styles.statusCard}
               >
                 <div className={styles.vercelBrand}>
-                  <div className={styles.vercelIcon}>▲</div>
-                  <span>Vercel Deploy</span>
+                  <div className={styles.vercelIcon}>{deployMode === 'direct' ? '🎯' : '▲'}</div>
+                  <span>{deployMode === 'direct' ? 'Direct Pentest' : 'Auto Deploy'}</span>
                 </div>
 
-                <h2 className={styles.statusTitle}>Deploy Target Application</h2>
+                {/* Mode Selector */}
+                <div className={styles.modeSelector}>
+                  <button 
+                    className={`${styles.modeBtn} ${deployMode === 'direct' ? styles.modeBtnActive : ''}`}
+                    onClick={() => setDeployMode('direct')}
+                  >
+                    🎯 Direct URL
+                  </button>
+                  <button 
+                    className={`${styles.modeBtn} ${deployMode === 'auto' ? styles.modeBtnActive : ''}`}
+                    onClick={() => setDeployMode('auto')}
+                  >
+                    ▲ Auto Deploy
+                  </button>
+                </div>
+
+                <h2 className={styles.statusTitle}>
+                  {deployMode === 'direct' ? 'Enter Target URL' : 'Deploy & Pentest'}
+                </h2>
                 <p style={{ opacity: 0.6, marginBottom: '24px', fontSize: '14px' }}>
-                  Enter a GitHub repository URL to deploy and pentest
+                  {deployMode === 'direct' 
+                    ? 'Paste your ngrok URL or any live website to pentest'
+                    : 'Enter a GitHub repository URL to deploy and pentest'
+                  }
                 </p>
 
                 <div className={styles.repoInputGroup}>
@@ -443,17 +485,20 @@ export default function Phase2Page() {
                     type="text"
                     value={repoInput}
                     onChange={(e) => setRepoInput(e.target.value)}
-                    placeholder="https://github.com/owner/repo"
+                    placeholder={deployMode === 'direct' ? 'https://xxxx.ngrok-free.app' : 'https://github.com/owner/repo'}
                     className={styles.repoInput}
                     onKeyDown={(e) => e.key === 'Enter' && handleManualDeploy()}
                   />
                   <button onClick={handleManualDeploy} className={styles.deployBtn}>
-                    Deploy & Test
+                    {deployMode === 'direct' ? 'Start Pentest' : 'Deploy & Test'}
                   </button>
                 </div>
 
                 <div style={{ marginTop: '20px', opacity: 0.5, fontSize: '12px' }}>
-                  <p>Supported: Next.js, React, Vue, Node.js, Static sites</p>
+                  {deployMode === 'direct' 
+                    ? <p>Tip: Run ngrok locally → paste URL here → instant pentest!</p>
+                    : <p>Supported: Next.js, React, Vue, Node.js, Static sites</p>
+                  }
                 </div>
               </motion.div>
             ) : deployment.status !== 'complete' && deployment.status !== 'fixing' && deployment.status !== 'fixed' ? (
