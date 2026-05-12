@@ -102,10 +102,10 @@ export async function analyzeGitHubRepo(repoFullName: string) {
     await Promise.all(analysisPromises)
 
     // 4. Structural Logic Mapping
-    if (filePaths.some(p => p.startsWith('src/app') || p.startsWith('app/'))) detected.add('Next.js App Router (Modern Architecture)')
-    if (filePaths.some(p => p.includes('actions/'))) detected.add('Server Actions Communication Pattern')
-    if (filePaths.some(p => p.includes('middleware.ts'))) detected.add('Edge Security Middleware')
-    if (filePaths.some(p => p.includes('.github/workflows'))) detected.add('GitHub Actions CI/CD Pipeline')
+    if (filePaths.some((p: string) => p.startsWith('src/app') || p.startsWith('app/'))) detected.add('Next.js App Router (Modern Architecture)')
+    if (filePaths.some((p: string) => p.includes('actions/'))) detected.add('Server Actions Communication Pattern')
+    if (filePaths.some((p: string) => p.includes('middleware.ts'))) detected.add('Edge Security Middleware')
+    if (filePaths.some((p: string) => p.includes('.github/workflows'))) detected.add('GitHub Actions CI/CD Pipeline')
 
     // 5. Language Stats
     const langRes = await fetch(`https://api.github.com/repos/${repoFullName}/languages`, { headers })
