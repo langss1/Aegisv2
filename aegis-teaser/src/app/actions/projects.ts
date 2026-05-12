@@ -23,32 +23,36 @@ export async function createProject(formData: {
   repo_url?: string;
   tech_stack?: string[];
 }) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
 
-  if (!user) throw new Error('Unauthorized')
+    if (!user) return { success: false, error: 'Unauthorized' }
 
-  const { data, error } = await supabase
-    .from('projects')
-    .insert([
-      {
-        ...formData,
-        user_id: user.id,
-        status: 'Scanning',
-        score: 0,
-        tech_stack: formData.tech_stack || []
-      }
-    ])
-    .select()
+    const { data, error } = await supabase
+      .from('projects')
+      .insert([
+        {
+          ...formData,
+          user_id: user.id,
+          status: 'Scanning',
+          score: 0,
+          tech_stack: formData.tech_stack || []
+        }
+      ])
+      .select()
 
-  if (error) {
-    console.error('Error creating project:', error)
-    throw error
+    if (error) {
+      console.error('Supabase error:', error)
+      return { success: false, error: error.message }
+    }
+
+    revalidatePath('/projects')
+    revalidatePath('/dashboard')
+    return { success: true, data: data[0] }
+  } catch (err: any) {
+    return { success: false, error: err.message }
   }
-
-  revalidatePath('/projects')
-  revalidatePath('/dashboard')
-  return data[0]
 }
 
 export async function deleteProject(id: string) {

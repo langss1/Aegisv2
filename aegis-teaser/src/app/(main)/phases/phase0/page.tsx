@@ -74,18 +74,22 @@ export default function Phase0Page() {
       }
 
       // Create project in database with verified tech stack
-      await createProject({
+      const result = await createProject({
         name: selectedRepo?.name || url.split('/').pop() || 'Untitled Project',
         language: selectedRepo?.language || detectedStack[0] || 'Unknown',
         repo_url: url,
         tech_stack: detectedStack
       })
       
+      if (!result.success) {
+        throw new Error(result.error)
+      }
+      
       alert('✅ Architecture successfully saved to database!')
-      router.push('/dashboard') // Back to dashboard for now as requested
+      router.push('/dashboard') 
     } catch (err: any) {
       console.error('Final scan init error:', err)
-      alert(`❌ Database Error: ${err.message || 'Please ensure you have added the tech_stack column in Supabase SQL Editor.'}`)
+      alert(`❌ Database Error: ${err.message}`)
     }
   }
 
