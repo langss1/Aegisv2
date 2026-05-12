@@ -5,142 +5,76 @@ import styles from './HeroSection.module.css'
 
 const WORDS = ['Secure', 'Trusted', 'Protected', 'Defended', 'Resilient']
 
-export default function HeroSection() {
-  const [wordIndex, setWordIndex] = useState(0)
-  const [displayed, setDisplayed] = useState('')
-  const [typing, setTyping] = useState(true)
-  const orbRef = useRef<HTMLDivElement>(null)
+export default function HeroSection({ onComplete }: { onComplete: () => void }) {
+  const [text, setText] = useState('')
+  const [isDone, setIsDone] = useState(false)
+  const fullText = 'The next-gen security agent platform.'
 
-  // Typewriter effect
   useEffect(() => {
-    const word = WORDS[wordIndex]
-    let i = typing ? displayed.length : displayed.length
-    let timeout: ReturnType<typeof setTimeout>
-
-    if (typing) {
-      if (displayed.length < word.length) {
-        timeout = setTimeout(() => setDisplayed(word.slice(0, displayed.length + 1)), 80)
-      } else {
-        timeout = setTimeout(() => setTyping(false), 1800)
+    let i = 0
+    const interval = setInterval(() => {
+      setText(fullText.slice(0, i + 1))
+      i++
+      if (i === fullText.length) {
+        clearInterval(interval)
+        setTimeout(() => {
+          setIsDone(true)
+          onComplete()
+        }, 500)
       }
-    } else {
-      if (displayed.length > 0) {
-        timeout = setTimeout(() => setDisplayed(displayed.slice(0, -1)), 50)
-      } else {
-        setWordIndex((wordIndex + 1) % WORDS.length)
-        setTyping(true)
-      }
-    }
-    return () => clearTimeout(timeout)
-  }, [displayed, typing, wordIndex])
-
-  // Mouse parallax orb
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!orbRef.current) return
-      const x = (e.clientX / window.innerWidth - 0.5) * 30
-      const y = (e.clientY / window.innerHeight - 0.5) * 30
-      orbRef.current.style.transform = `translate(${x}px, ${y}px)`
-    }
-    window.addEventListener('mousemove', handleMouseMove)
-    return () => window.removeEventListener('mousemove', handleMouseMove)
-  }, [])
+    }, 50)
+    return () => clearInterval(interval)
+  }, [onComplete])
 
   return (
     <section className={styles.hero}>
-      {/* Background glow orbs */}
-      <div className={styles.orbContainer} ref={orbRef}>
-        <div className={styles.orbPrimary} />
-        <div className={styles.orbSecondary} />
-        <div className={styles.orbTertiary} />
-      </div>
+      <div className={styles.container}>
+        <div className={styles.content}>
+          <div className={styles.badge}>
+            <span className={styles.badgeDot} />
+            Autonomous AI Security
+          </div>
+          
+          <h1 className={styles.headline}>
+            {text}<span className={styles.cursor}>|</span>
+          </h1>
 
-      {/* Security Decorations */}
-      <div className={styles.shieldDeco}>
-        <svg className={styles.shieldSvg} viewBox="0 0 200 240" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M100 10L20 45v80c0 55 80 100 80 100s80-45 80-100V45L100 10z" 
-            stroke="url(#shieldGrad)" strokeWidth="1.5" fill="none" opacity="0.4"/>
-          <path d="M100 30L35 60v65c0 45 65 82 65 82s65-37 65-82V60L100 30z" 
-            stroke="url(#shieldGrad)" strokeWidth="1" fill="rgba(220,38,38,0.05)" opacity="0.6"/>
-          <defs>
-            <linearGradient id="shieldGrad" x1="20" y1="10" x2="180" y2="240">
-              <stop offset="0%" stopColor="#dc2626"/>
-              <stop offset="100%" stopColor="#f472b6"/>
-            </linearGradient>
-          </defs>
-        </svg>
-      </div>
+          <div className={`${styles.revealContent} ${isDone ? styles.visible : ''}`}>
+            <p className={styles.subtext}>
+              Experience the future of DevSecOps. AEGIS analyzes, attacks, and monitors your code automatically.
+            </p>
 
-      <div className={styles.floatingIcons}>
-        {/* Network Icon */}
-        <div className={styles.iconNetwork}>
-          <svg width="40" height="40" viewBox="0 0 24 24" fill="none">
-            <circle cx="12" cy="12" r="3" stroke="#dc2626" strokeWidth="1.5"/>
-            <path d="M12 2v7m0 6v7M2 12h7m6 0h7m-3.5-6.5l-4.5 4.5m-1 1l-4.5 4.5m0-11l4.5 4.5m1 1l4.5 4.5" stroke="#dc2626" strokeWidth="1.5" strokeOpacity="0.4"/>
-          </svg>
-        </div>
-        {/* Sword Icon */}
-        <div className={styles.iconSword}>
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
-            <path d="M14.5 3.5L3.5 14.5l6 6 11-11-6-6z" stroke="#f472b6" strokeWidth="1.5" strokeOpacity="0.5"/>
-            <path d="M16 10l5 5m-7-3l5 5" stroke="#f472b6" strokeWidth="1.5" strokeOpacity="0.3"/>
-            <path d="M3 21l3-3" stroke="#f472b6" strokeWidth="2"/>
-          </svg>
-        </div>
-      </div>
-
-      <div className={styles.gradientBg} />
-
-      <div className={styles.content}>
-        {/* Headline */}
-        <h1 className={styles.headline}>
-          A New Way to <br /> Build <br />
-          <span className="gradient-text">{displayed}</span> <br />
-          Software
-        </h1>
-
-        {/* Subtext */}
-        <p className={styles.subtext}>
-          AEGIS adalah platform keamanan berbasis AI yang menganalisis, menyerang, dan memantau kode Anda secara otomatis — 
-          sehingga developer bisa fokus membangun, tanpa mengorbankan keamanan.
-        </p>
-
-        {/* CTA buttons */}
-        <div className={styles.actions}>
-          <a href="#demo" className="btn-primary" id="hero-watch-demo">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-              <circle cx="12" cy="12" r="10" stroke="white" strokeWidth="1.5"/>
-              <path d="M10 8l6 4-6 4V8z" fill="white"/>
-            </svg>
-            Watch Demo
-          </a>
-          <Link href="/login" className="btn-outline" id="hero-early-access">
-            Login
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-              <path d="M5 12h14M12 5l7 7-7 7" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
-            </svg>
-          </Link>
-        </div>
-
-        {/* Stats row */}
-        <div className={styles.statsRow}>
-          {[
-            { val: '98%', label: 'Vulnerability Detection Rate' },
-            { val: '10x', label: 'Faster Security Review' },
-            { val: '3', label: 'Security Phases Automated' },
-          ].map((s) => (
-            <div key={s.label} className={styles.statItem}>
-              <span className={styles.statVal}>{s.val}</span>
-              <span className={styles.statLabel}>{s.label}</span>
+            <div className={styles.actions}>
+              <Link href="/login" className="btn-primary">
+                Get Started
+              </Link>
+              <a href="#demo" className="btn-outline">
+                View Documentation
+              </a>
             </div>
-          ))}
-        </div>
-      </div>
 
-      {/* Scroll indicator */}
-      <div className={styles.scrollHint}>
-        <div className={styles.scrollLine} />
-        <span>Scroll to explore</span>
+            <div className={styles.stats}>
+              <div className={styles.stat}>
+                <span className={styles.statVal}>98%</span>
+                <span className={styles.statLabel}>Detection</span>
+              </div>
+              <div className={styles.stat}>
+                <span className={styles.statVal}>10x</span>
+                <span className={styles.statLabel}>Faster</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className={`${styles.visual} ${isDone ? styles.visible : ''}`}>
+           {/* Minimal Security Visual */}
+           <div className={styles.shieldWrapper}>
+              <svg width="400" height="400" viewBox="0 0 24 24" fill="none" className={styles.shieldSvg}>
+                <path d="M12 2L4 5v6.09c0 5.05 3.41 9.76 8 10.91 4.59-1.15 8-5.86 8-10.91V5l-8-3z" stroke="#0f172a" strokeWidth="0.5" strokeOpacity="0.1"/>
+                <circle cx="12" cy="12" r="8" stroke="#dc2626" strokeWidth="0.5" strokeOpacity="0.2" className={styles.pulseCircle}/>
+              </svg>
+           </div>
+        </div>
       </div>
     </section>
   )
