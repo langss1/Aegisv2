@@ -39,9 +39,8 @@ export default function Phase2Page() {
   const [currentTest, setCurrentTest] = useState<string | null>(null)
   const [selectedVuln, setSelectedVuln] = useState<PentestResult | null>(null)
   const [fixingId, setFixingId] = useState<number | null>(null)
-  const [repoInput, setRepoInput] = useState('')
-  const [showRepoInput, setShowRepoInput] = useState(false)
-  const [deployMode, setDeployMode] = useState<'auto' | 'direct'>('direct')
+  const [targetUrl, setTargetUrl] = useState('')
+  const [showInput, setShowInput] = useState(false)
   const terminalRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
 
@@ -58,157 +57,33 @@ export default function Phase2Page() {
   }
 
   useEffect(() => {
-    const contextStr = localStorage.getItem('aegis_scan_context')
-    if (contextStr) {
-      const context = JSON.parse(contextStr)
-      if (context.repoUrl) {
-        startVercelDeployment(context.repoUrl, context.repoName)
-      } else {
-        setShowRepoInput(true)
-      }
-    } else {
-      setShowRepoInput(true)
-    }
+    // Always show input for direct URL
+    setShowInput(true)
+    addLog('AEGIS Pentest Engine Ready')
+    addLog('Enter target URL to begin security scan...')
   }, [])
 
-  const startVercelDeployment = async (repoUrl: string, repoName: string) => {
-    setShowRepoInput(false)
-    setDeployment(prev => ({ ...prev, status: 'deploying', progress: 10 }))
-    addLog(`Starting Vercel deployment for ${repoName || repoUrl}...`)
-    addLog(`Repository: ${repoUrl}`)
-
-    try {
-      // Step 1: Initiate deployment
-      addLog('Connecting to Vercel API...')
-      setDeployment(prev => ({ ...prev, progress: 20 }))
-
-      const response = await fetch('/api/vercel', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          action: 'deploy', 
-          repoUrl, 
-          projectName: repoName || 'target-app'
-        })
-      })
-
-      const data = await response.json()
-      
-      if (data.error) {
-        throw new Error(data.error)
-      }
-
-      addLog(`Deployment initiated: ${data.deploymentId}`)
-      setDeployment(prev => ({ 
-        ...prev, 
-        status: 'building',
-        deploymentId: data.deploymentId,
-        progress: 40 
-      }))
-
-      // Step 2: Poll for deployment status
-      addLog('Building application on Vercel...')
-      const finalUrl = await pollDeploymentStatus(data.deploymentId)
-
-      // Step 3: Deployment ready
-      addLog(`Deployment successful!`)
-      addLog(`Live URL: ${finalUrl}`)
-      setDeployment(prev => ({
-        ...prev,
-        status: 'deployed',
-        deploymentUrl: finalUrl,
-        progress: 100
-      }))
-
-      // Save to context
-      localStorage.setItem('aegis_deployment_url', finalUrl)
-
-      // Wait a moment then start pentest
-      await new Promise(resolve => setTimeout(resolve, 2000))
-      startPentest(finalUrl)
-
-    } catch (error: any) {
-      console.error('Deployment error:', error)
-      addLog(`ERROR: ${error.message}`)
-      
-      if (error.message.includes('VERCEL_TOKEN')) {
-        addLog('Please add your Vercel token to .env file')
-        addLog('Get token from: https://vercel.com/account/tokens')
-      }
-      
-      setDeployment(prev => ({
-        ...prev,
-        status: 'error',
-        error: error.message
-      }))
-    }
-  }
-
-  const pollDeploymentStatus = async (deploymentId: string): Promise<string> => {
-    const maxAttempts = 60 // 5 minutes max
-    let attempts = 0
-
-    while (attempts < maxAttempts) {
-      await new Promise(resolve => setTimeout(resolve, 5000)) // Check every 5 seconds
-      
-      try {
-        const response = await fetch(`/api/vercel?deploymentId=${deploymentId}`)
-        const data = await response.json()
-
-        if (data.status === 'READY') {
-          return data.url
-        } else if (data.status === 'ERROR' || data.status === 'CANCELED') {
-          throw new Error(`Deployment ${data.status.toLowerCase()}`)
-        }
-
-        // Update progress based on status
-        const progress = data.status === 'BUILDING' ? 60 : 
-                        data.status === 'QUEUED' ? 45 : 50
-        
-        setDeployment(prev => ({ ...prev, progress }))
-        addLog(`Build status: ${data.status}...`)
-        
-      } catch (e: any) {
-        console.error('Status check error:', e)
-      }
-      
-      attempts++
-    }
-
-    throw new Error('Deployment timeout - please check Vercel dashboard')
-  }
-
-  const handleManualDeploy = () => {
-    if (!repoInput.trim()) return
+  const handleStartPentest = () => {
+    if (!targetUrl.trim()) return
     
-    if (deployMode === 'direct') {
-      // Direct URL mode - skip deployment, go straight to pentest
-      if (!repoInput.startsWith('http')) {
-        addLog('ERROR: Please enter a valid URL (https://...)')
-        return
-      }
-      setShowRepoInput(false)
-      setDeployment(prev => ({ 
-        ...prev, 
-        status: 'deployed',
-        deploymentUrl: repoInput,
-        progress: 100
-      }))
-      addLog(`Target URL: ${repoInput}`)
-      addLog('Skipping deployment - using direct URL')
-      
-      setTimeout(() => {
-        startPentest(repoInput)
-      }, 1000)
-    } else {
-      // Auto deploy mode (Vercel)
-      if (!repoInput.includes('github.com')) {
-        addLog('ERROR: Please enter a valid GitHub repository URL')
-        return
-      }
-      const repoName = repoInput.split('/').pop()?.replace('.git', '') || 'target-app'
-      startVercelDeployment(repoInput, repoName)
+    if (!targetUrl.startsWith('http')) {
+      addLog('ERROR: Please enter a valid URL (https://...)')
+      return
     }
+    
+    setShowInput(false)
+    setDeployment(prev => ({ 
+      ...prev, 
+      status: 'deployed',
+      deploymentUrl: targetUrl,
+      progress: 100
+    }))
+    addLog(`Target: ${targetUrl}`)
+    addLog('Starting security scan...')
+    
+    setTimeout(() => {
+      startPentest(targetUrl)
+    }, 500)
   }
 
   const startPentest = async (targetUrl: string) => {
@@ -440,65 +315,46 @@ export default function Phase2Page() {
         {/* Right: Status & Results */}
         <div className={styles.statusArea}>
           <AnimatePresence mode="wait">
-            {/* Repo Input Form */}
-            {showRepoInput && deployment.status === 'idle' ? (
+            {/* URL Input Form */}
+            {showInput && deployment.status === 'idle' ? (
               <motion.div
-                key="repo-input"
+                key="url-input"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 className={styles.statusCard}
               >
                 <div className={styles.vercelBrand}>
-                  <div className={styles.vercelIcon}>{deployMode === 'direct' ? '🎯' : '▲'}</div>
-                  <span>{deployMode === 'direct' ? 'Direct Pentest' : 'Auto Deploy'}</span>
+                  <div className={styles.vercelIcon}>🎯</div>
+                  <span>Live Pentest</span>
                 </div>
 
-                {/* Mode Selector */}
-                <div className={styles.modeSelector}>
-                  <button 
-                    className={`${styles.modeBtn} ${deployMode === 'direct' ? styles.modeBtnActive : ''}`}
-                    onClick={() => setDeployMode('direct')}
-                  >
-                    🎯 Direct URL
-                  </button>
-                  <button 
-                    className={`${styles.modeBtn} ${deployMode === 'auto' ? styles.modeBtnActive : ''}`}
-                    onClick={() => setDeployMode('auto')}
-                  >
-                    ▲ Auto Deploy
-                  </button>
-                </div>
-
-                <h2 className={styles.statusTitle}>
-                  {deployMode === 'direct' ? 'Enter Target URL' : 'Deploy & Pentest'}
-                </h2>
+                <h2 className={styles.statusTitle}>Enter Target URL</h2>
                 <p style={{ opacity: 0.6, marginBottom: '24px', fontSize: '14px' }}>
-                  {deployMode === 'direct' 
-                    ? 'Paste your ngrok URL or any live website to pentest'
-                    : 'Enter a GitHub repository URL to deploy and pentest'
-                  }
+                  Paste your ngrok URL atau website yang mau di-scan
                 </p>
 
                 <div className={styles.repoInputGroup}>
                   <input
                     type="text"
-                    value={repoInput}
-                    onChange={(e) => setRepoInput(e.target.value)}
-                    placeholder={deployMode === 'direct' ? 'https://xxxx.ngrok-free.app' : 'https://github.com/owner/repo'}
+                    value={targetUrl}
+                    onChange={(e) => setTargetUrl(e.target.value)}
+                    placeholder="https://xxxx.ngrok-free.app"
                     className={styles.repoInput}
-                    onKeyDown={(e) => e.key === 'Enter' && handleManualDeploy()}
+                    onKeyDown={(e) => e.key === 'Enter' && handleStartPentest()}
                   />
-                  <button onClick={handleManualDeploy} className={styles.deployBtn}>
-                    {deployMode === 'direct' ? 'Start Pentest' : 'Deploy & Test'}
+                  <button onClick={handleStartPentest} className={styles.deployBtn}>
+                    Start Pentest
                   </button>
                 </div>
 
-                <div style={{ marginTop: '20px', opacity: 0.5, fontSize: '12px' }}>
-                  {deployMode === 'direct' 
-                    ? <p>Tip: Run ngrok locally → paste URL here → instant pentest!</p>
-                    : <p>Supported: Next.js, React, Vue, Node.js, Static sites</p>
-                  }
+                <div style={{ marginTop: '24px', padding: '16px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', textAlign: 'left' }}>
+                  <p style={{ fontSize: '12px', fontWeight: 700, marginBottom: '8px', color: '#f87171' }}>Quick Start dengan Ngrok:</p>
+                  <code style={{ fontSize: '11px', opacity: 0.7, display: 'block', lineHeight: 1.8 }}>
+                    1. cd your-app && npm start<br/>
+                    2. ngrok http 3000<br/>
+                    3. Copy URL → Paste di atas
+                  </code>
                 </div>
               </motion.div>
             ) : deployment.status !== 'complete' && deployment.status !== 'fixing' && deployment.status !== 'fixed' ? (
