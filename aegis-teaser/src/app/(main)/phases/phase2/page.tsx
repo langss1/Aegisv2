@@ -193,147 +193,127 @@ export default function Phase2Page() {
   const startPentest = async (targetUrl: string) => {
     setDeployment(prev => ({ ...prev, status: 'testing' }))
     addLog('═══════════════════════════════════════')
-    addLog('AEGIS PENTEST ENGINE v2.0 - INITIATED')
+    addLog('AEGIS PENTEST ENGINE v2.0 - LIVE SCAN')
     addLog(`Target: ${targetUrl}`)
     addLog('═══════════════════════════════════════')
 
-    const tests: PentestResult[] = [
-      { 
-        id: 1, 
-        name: 'SQL Injection', 
-        endpoint: '/api/login', 
-        severity: 'Critical', 
-        status: 'passed', 
-        description: 'SQL injection test passed',
-        file: 'api/login.js',
-        line: 15,
-        vulnerableCode: '',
-        fixedCode: ''
-      },
-      { 
-        id: 2, 
-        name: 'Cross-Site Scripting (XSS)', 
-        endpoint: '/search?q=', 
-        severity: 'Critical', 
-        status: 'vulnerable', 
-        description: 'Reflected XSS - User input tidak di-sanitize',
-        file: 'pages/search.js',
-        line: 23,
-        vulnerableCode: `// VULNERABLE CODE
-const query = req.query.q;
-res.send(\`<h1>Results for: \${query}</h1>\`);`,
-        fixedCode: `// FIXED CODE - Input sanitized
-const sanitizeHtml = require('sanitize-html');
-const query = sanitizeHtml(req.query.q);
-res.send(\`<h1>Results for: \${query}</h1>\`);`
-      },
-      { 
-        id: 3, 
-        name: 'CSRF Token Missing', 
-        endpoint: '/settings/update', 
-        severity: 'High', 
-        status: 'vulnerable', 
-        description: 'Form tidak memiliki CSRF token protection',
-        file: 'pages/settings.js',
-        line: 45,
-        vulnerableCode: `// VULNERABLE - No CSRF token
-app.post('/settings/update', (req, res) => {
-  updateSettings(req.body);
-  res.json({ success: true });
-});`,
-        fixedCode: `// FIXED - CSRF token validation
-const csrf = require('csurf');
-app.use(csrf({ cookie: true }));
-
-app.post('/settings/update', (req, res) => {
-  updateSettings(req.body);
-  res.json({ success: true });
-});`
-      },
-      { 
-        id: 4, 
-        name: 'Broken Authentication', 
-        endpoint: '/api/session', 
-        severity: 'Critical', 
-        status: 'passed', 
-        description: 'Session management properly implemented',
-        file: '',
-        line: 0,
-        vulnerableCode: '',
-        fixedCode: ''
-      },
-      { 
-        id: 5, 
-        name: 'Security Headers Missing', 
-        endpoint: '/', 
-        severity: 'Medium', 
-        status: 'vulnerable', 
-        description: 'Missing HSTS, X-Frame-Options, CSP headers',
-        file: 'server.js',
-        line: 12,
-        vulnerableCode: `// VULNERABLE - No security headers
-const app = express();
-app.use(express.json());
-
-app.listen(3000);`,
-        fixedCode: `// FIXED - Security headers added
-const helmet = require('helmet');
-const app = express();
-
-app.use(helmet());
-app.use(helmet.hsts({ maxAge: 31536000 }));
-app.use(helmet.frameguard({ action: 'deny' }));
-app.use(express.json());
-
-app.listen(3000);`
-      },
-      { 
-        id: 6, 
-        name: 'Rate Limiting', 
-        endpoint: '/api/login', 
-        severity: 'Medium', 
-        status: 'vulnerable', 
-        description: 'No rate limiting - vulnerable to brute force',
-        file: 'api/login.js',
-        line: 8,
-        vulnerableCode: `// VULNERABLE - No rate limiting
-app.post('/api/login', async (req, res) => {
-  const { email, password } = req.body;
-  const user = await authenticate(email, password);
-  res.json(user);
-});`,
-        fixedCode: `// FIXED - Rate limiting added
-const rateLimit = require('express-rate-limit');
-
-const loginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // 5 attempts
-  message: 'Too many login attempts'
-});
-
-app.post('/api/login', loginLimiter, async (req, res) => {
-  const { email, password } = req.body;
-  const user = await authenticate(email, password);
-  res.json(user);
-});`
-      },
+    const testNames = [
+      'SQL Injection',
+      'Cross-Site Scripting (XSS)',
+      'CSRF Token Missing',
+      'Security Headers',
+      'Rate Limiting',
+      'Open Redirect'
     ]
 
-    for (let i = 0; i < tests.length; i++) {
-      const test = tests[i]
-      setCurrentTest(test.name)
-      await new Promise(resolve => setTimeout(resolve, 600))
-      
-      const statusColor = test.status === 'passed' ? 'PASS' : 'VULN'
-      addLog(`[${statusColor}] ${test.name} → ${test.endpoint}`)
-      setPentestResults(prev => [...prev, test])
-    }
+    try {
+      // Show progress for each test
+      for (const testName of testNames) {
+        setCurrentTest(testName)
+        addLog(`[SCAN] Testing ${testName}...`)
+        await new Promise(resolve => setTimeout(resolve, 800))
+      }
 
-    await new Promise(resolve => setTimeout(resolve, 500))
-    const vulnCount = tests.filter(t => t.status === 'vulnerable').length
-    addLog('═══════════════════════════════════════')
-    addLog(`PENTEST COMPLETE - ${vulnCount} vulnerabilities found`)
-    addLog('═══════════════════════════════════════')
+      // Call real pentest API
+      addLog('[API] Sending payloads to target...')
+      const response = await fetch('/api/pentest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          targetUrl,
+          tests: ['sql', 'xss', 'csrf', 'headers', 'ratelimit', 'redirect']
+        })
+      })
+
+      const data = await response.json()
+
+      if (data.error) {
+        throw new Error(data.error)
+      }
+
+      // Process results
+      addLog('═══════════════════════════════════════')
+      addLog('SCAN RESULTS:')
+      
+      for (const result of data.results) {
+        const statusColor = result.status === 'passed' ? 'PASS' : 'VULN'
+        addLog(`[${statusColor}] ${result.name} → ${result.endpoint}`)
+        
+        if (result.status === 'vulnerable' && result.evidence) {
+          addLog(`       Evidence: ${result.evidence}`)
+        }
+
+        setPentestResults(prev => [...prev, result])
+        await new Promise(resolve => setTimeout(resolve, 300))
+      }
+
+      addLog('═══════════════════════════════════════')
+      addLog(`PENTEST COMPLETE - ${data.summary.vulnerable} vulnerabilities found`)
+      addLog(`Target tested: ${targetUrl}`)
+      addLog('═══════════════════════════════════════')
+
+      // Save results to localStorage
+      localStorage.setItem('aegis_pentest_results', JSON.stringify(data.results))
+
+    } catch (error: any) {
+      addLog(`[ERROR] Pentest failed: ${error.message}`)
+      
+      // Fallback to basic connectivity test
+      addLog('[FALLBACK] Running basic security check...')
+      
+      try {
+        const basicResponse = await fetch(targetUrl)
+        const headers = basicResponse.headers
+        
+        const basicResults: PentestResult[] = []
+        
+        // Check security headers
+        const missingHeaders: string[] = []
+        if (!headers.get('x-frame-options')) missingHeaders.push('X-Frame-Options')
+        if (!headers.get('x-content-type-options')) missingHeaders.push('X-Content-Type-Options')
+        if (!headers.get('strict-transport-security')) missingHeaders.push('HSTS')
+        
+        if (missingHeaders.length > 0) {
+          basicResults.push({
+            id: 1,
+            name: 'Security Headers Missing',
+            endpoint: '/',
+            severity: 'Medium',
+            status: 'vulnerable',
+            description: `Missing: ${missingHeaders.join(', ')}`,
+            file: 'next.config.js',
+            line: 5,
+            vulnerableCode: '// No security headers configured',
+            fixedCode: '// Add helmet or custom headers in next.config.js'
+          })
+          addLog(`[VULN] Security Headers Missing → /`)
+        } else {
+          basicResults.push({
+            id: 1,
+            name: 'Security Headers',
+            endpoint: '/',
+            severity: 'Medium',
+            status: 'passed',
+            description: 'Security headers are configured',
+            file: '',
+            line: 0,
+            vulnerableCode: '',
+            fixedCode: ''
+          })
+          addLog(`[PASS] Security Headers → /`)
+        }
+
+        setPentestResults(basicResults)
+        localStorage.setItem('aegis_pentest_results', JSON.stringify(basicResults))
+        
+        addLog('═══════════════════════════════════════')
+        addLog(`BASIC SCAN COMPLETE`)
+        addLog('═══════════════════════════════════════')
+        
+      } catch (e) {
+        addLog(`[ERROR] Cannot reach target: ${targetUrl}`)
+      }
+    }
     
     setCurrentTest(null)
     setDeployment(prev => ({ ...prev, status: 'complete' }))
