@@ -5,10 +5,12 @@ import { useRouter } from 'next/navigation'
 import styles from './phase0.module.css'
 import { motion, AnimatePresence } from 'framer-motion'
 import { getGitHubRepos } from '@/app/auth/github/actions'
+import { createProject } from '@/app/actions/projects'
 
 export default function Phase0Page() {
   const [sourceType, setSourceType] = useState<'github' | 'public' | null>(null)
   const [url, setUrl] = useState('')
+  const [selectedRepo, setSelectedRepo] = useState<any>(null)
   const [step, setStep] = useState<'selection' | 'config' | 'analyzing' | 'stack_confirm'>('selection')
   const [repos, setRepos] = useState<any[]>([])
   const [loadingRepos, setLoadingRepos] = useState(false)
@@ -49,8 +51,18 @@ export default function Phase0Page() {
     setDetectedStack(detectedStack.filter(t => t !== tech))
   }
 
-  const startFinalScan = () => {
-    router.push('/phases/phase1')
+  const startFinalScan = async () => {
+    try {
+      // Create project in database
+      await createProject({
+        name: selectedRepo?.name || url.split('/').pop() || 'Untitled Project',
+        language: selectedRepo?.language || detectedStack[0] || 'Unknown',
+        repo_url: url
+      })
+      router.push('/phases/phase1')
+    } catch (err) {
+      alert('Failed to initialize project in database')
+    }
   }
 
   return (
@@ -108,7 +120,12 @@ export default function Phase0Page() {
                             </div>
                           </div>
                         </div>
-                        <button className={styles.fullImportBtn} onClick={() => { setUrl(repo.html_url); setStep('analyzing'); setTimeout(() => setStep('stack_confirm'), 2000); }}>
+                        <button className={styles.fullImportBtn} onClick={() => { 
+                          setSelectedRepo(repo); 
+                          setUrl(repo.html_url); 
+                          setStep('analyzing'); 
+                          setTimeout(() => setStep('stack_confirm'), 2000); 
+                        }}>
                           Import
                         </button>
                       </div>

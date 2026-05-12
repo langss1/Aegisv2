@@ -1,19 +1,45 @@
 'use client'
 export const dynamic = 'force-dynamic'
+import { useState, useEffect } from 'react'
 import styles from '../dashboard.module.css'
+import { getDashboardStats, getRecentRuns } from '@/app/actions/projects'
 
 export default function DashboardPage() {
-  const stats = [
-    { label: 'Overall Risk Score', value: '82/100', desc: 'Posture: Moderate', color: 'textAmber' },
-    { label: 'Active Projects', value: '12', desc: '↑ 14% from last week', color: 'textGreen' },
-    { label: 'Vulnerabilities Fixed', value: '1,240', desc: '98% automated recovery', color: 'textGreen' },
-  ]
+  const [dbStats, setDbStats] = useState<any>(null)
+  const [recentRuns, setRecentRuns] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
 
-  const recentRuns = [
-    { name: 'aegis-core-backend', status: 'Healthy', score: 98, lastRun: '2h ago', pill: 'pillGreen', scoreColor: 'scoreGreen' },
-    { name: 'payment-gateway-api', status: 'Vulnerable', score: 64, lastRun: '5h ago', pill: 'pillRed', scoreColor: 'scoreAmber' },
-    { name: 'user-auth-service', status: 'Testing', score: 82, lastRun: '1d ago', pill: 'pillBlue', scoreColor: 'scoreGreen' },
-    { name: 'customer-portal-v3', status: 'Healthy', score: 92, lastRun: '2d ago', pill: 'pillGreen', scoreColor: 'scoreGreen' },
+  useEffect(() => {
+    async function loadData() {
+      setLoading(true)
+      const stats = await getDashboardStats()
+      const runs = await getRecentRuns()
+      setDbStats(stats)
+      setRecentRuns(runs)
+      setLoading(false)
+    }
+    loadData()
+  }, [])
+
+  const statsDisplay = [
+    { 
+      label: 'Overall Risk Score', 
+      value: dbStats ? `${dbStats.avgScore}/100` : '--/100', 
+      desc: dbStats?.avgScore > 80 ? 'Posture: Strong' : 'Posture: Moderate', 
+      color: 'textGreen' 
+    },
+    { 
+      label: 'Active Projects', 
+      value: dbStats?.projectCount.toString() || '0', 
+      desc: 'Live infrastructure', 
+      color: 'textGreen' 
+    },
+    { 
+      label: 'Critical Vulnerabilities', 
+      value: dbStats?.vulnerableCount.toString() || '0', 
+      desc: 'Action required', 
+      color: dbStats?.vulnerableCount > 0 ? 'textRed' : 'textGreen' 
+    },
   ]
 
   return (
@@ -24,7 +50,7 @@ export default function DashboardPage() {
       </div>
 
       <div className={styles.statsRow}>
-        {stats.map((stat, idx) => (
+        {statsDisplay.map((stat, idx) => (
           <div key={idx} className={styles.card}>
             <div className={styles.cardLabel}>
               {stat.label}
@@ -45,35 +71,42 @@ export default function DashboardPage() {
           <h3>Recent Security Runs</h3>
           <button className={styles.viewAllBtn}>View All</button>
         </div>
-        <table className={styles.table}>
-          <thead>
-            <tr>
-              <th>Project Name</th>
-              <th>Status</th>
-              <th>Security Score</th>
-              <th>Last Scanned</th>
-            </tr>
-          </thead>
-          <tbody>
-            {recentRuns.map((run, idx) => (
-              <tr key={idx}>
-                <td style={{ fontWeight: 700, color: '#fff' }}>{run.name}</td>
-                <td>
-                  <span className={`${styles.statusPill} ${styles[run.pill]}`}>
-                    {run.status}
-                  </span>
-                </td>
-                <td>
-                  <div className={styles.scoreTrack}>
-                    <div className={`${styles.scoreBar} ${styles[run.scoreColor]}`} style={{ width: `${run.score}%` }} />
-                  </div>
-                  <span style={{ fontWeight: 800, color: '#fff', fontSize: '14px' }}>{run.score}</span>
-                </td>
-                <td style={{ color: '#3f3f46' }}>{run.lastRun}</td>
+        
+        {loading ? (
+          <div style={{ padding: '20px', textAlign: 'center', opacity: 0.5 }}>Syncing logs...</div>
+        ) : recentRuns.length === 0 ? (
+          <div style={{ padding: '40px', textAlign: 'center', color: '#3f3f46' }}>No recent activity detected.</div>
+        ) : (
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>Project Name</th>
+                <th>Status</th>
+                <th>Security Score</th>
+                <th>Last Scanned</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {recentRuns.map((run, idx) => (
+                <tr key={idx}>
+                  <td style={{ fontWeight: 700, color: '#fff' }}>{run.projects?.name}</td>
+                  <td>
+                    <span className={`${styles.statusPill} ${run.status === 'Healthy' ? styles.pillGreen : styles.pillRed}`}>
+                      {run.status}
+                    </span>
+                  </td>
+                  <td>
+                    <div className={styles.scoreTrack}>
+                      <div className={`${styles.scoreBar} ${run.score > 80 ? styles.scoreGreen : styles.scoreAmber}`} style={{ width: `${run.score}%` }} />
+                    </div>
+                    <span style={{ fontWeight: 800, color: '#fff', fontSize: '14px' }}>{run.score}</span>
+                  </td>
+                  <td style={{ color: '#3f3f46' }}>{new Date(run.created_at).toLocaleDateString()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   )
