@@ -17,7 +17,12 @@ export async function getProjects() {
   return data
 }
 
-export async function createProject(formData: { name: string; language: string; repo_url?: string }) {
+export async function createProject(formData: { 
+  name: string; 
+  language: string; 
+  repo_url?: string;
+  tech_stack?: string[];
+}) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -29,8 +34,9 @@ export async function createProject(formData: { name: string; language: string; 
       {
         ...formData,
         user_id: user.id,
-        status: 'Testing',
-        score: 0
+        status: 'Scanning',
+        score: 0,
+        tech_stack: formData.tech_stack || []
       }
     ])
     .select()

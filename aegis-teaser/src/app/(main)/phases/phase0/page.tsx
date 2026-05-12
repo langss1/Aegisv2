@@ -68,14 +68,17 @@ export default function Phase0Page() {
 
   const startFinalScan = async () => {
     try {
-      // Create project in database
+      // Create project in database with verified tech stack
       await createProject({
         name: selectedRepo?.name || url.split('/').pop() || 'Untitled Project',
         language: selectedRepo?.language || detectedStack[0] || 'Unknown',
-        repo_url: url
+        repo_url: url,
+        tech_stack: detectedStack // This will be the base for SAST & Heal
       })
+      
       router.push('/phases/phase1')
     } catch (err) {
+      console.error('Final scan init error:', err)
       alert('Failed to initialize project in database')
     }
   }
