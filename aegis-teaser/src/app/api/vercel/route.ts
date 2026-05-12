@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 const VERCEL_API = 'https://api.vercel.com'
+const GITHUB_API = 'https://api.github.com'
 
 interface DeploymentStatus {
   id: string
@@ -9,7 +10,57 @@ interface DeploymentStatus {
   readyState: string
 }
 
-// Deploy a GitHub repo to Vercel
+interface FileEntry {
+  file: string
+  data: string
+  encoding?: 'base64' | 'utf-8'
+}
+
+// Fetch all files from GitHub repo recursively
+async function fetchGitHubFiles(owner: string, repo: string, path: string = ''): Promise<FileEntry[]> {
+  const files: FileEntry[] = []
+  
+  const response = await fetch(`${GITHUB_API}/repos/${owner}/${repo}/contents/${path}`, {
+    headers: {
+      'Accept': 'application/vnd.github.v3+json',
+      'User-Agent': 'AEGIS-Scanner'
+    }
+  })
+  
+  if (!response.ok) {
+    throw new Error(`Failed to fetch repo contents: ${response.statusText}`)
+  }
+  
+  const contents = await response.json()
+  
+  for (const item of contents) {
+    // Skip node_modules, .git, etc
+    if (item.name === 'node_modules' || item.name === '.git' || item.name === '.next') {
+      continue
+    }
+    
+    if (item.type === 'file') {
+      // Fetch file content
+      const fileRes = await fetch(item.download_url)
+      const content = await fileRes.text()
+      
+      files.push({
+        file: path ? `${path}/${item.name}` : item.name,
+        data: content,
+        encoding: 'utf-8'
+      })
+    } else if (item.type === 'dir') {
+      // Recursively fetch directory contents
+      const subPath = path ? `${path}/${item.name}` : item.name
+      const subFiles = await fetchGitHubFiles(owner, repo, subPath)
+      files.push(...subFiles)
+    }
+  }
+  
+  return files
+}
+
+// Deploy by uploading files directly (no GitHub integration needed)
 async function deployToVercel(repoUrl: string, projectName: string): Promise<{
   deploymentId: string
   url: string
@@ -34,7 +85,7 @@ async function deployToVercel(repoUrl: string, projectName: string): Promise<{
     .replace(/-+/g, '-')
     .substring(0, 50)
 
-  // First, verify token is valid
+  // Verify token is valid
   const verifyRes = await fetch(`${VERCEL_API}/v2/user`, {
     headers: { 'Authorization': `Bearer ${token}` }
   })
@@ -44,57 +95,15 @@ async function deployToVercel(repoUrl: string, projectName: string): Promise<{
     throw new Error(`Invalid Vercel token: ${verifyData.error?.message || 'Not authorized'}`)
   }
 
-  // Check if repo is already connected to Vercel
-  const projectsRes = await fetch(`${VERCEL_API}/v9/projects?search=${repo}`, {
-    headers: { 'Authorization': `Bearer ${token}` }
-  })
-  const projectsData = await projectsRes.json()
+  console.log(`Fetching files from GitHub: ${owner}/${repo}`)
   
-  let projectId: string | null = null
+  // Fetch all files from GitHub
+  const files = await fetchGitHubFiles(owner, repo)
+  console.log(`Fetched ${files.length} files`)
+
+  // Create deployment with file upload
+  const projectSlug = `aegis-${cleanName}-${Date.now().toString(36)}`
   
-  // Find existing project linked to this repo
-  if (projectsData.projects) {
-    const existingProject = projectsData.projects.find((p: any) => 
-      p.link?.repo === `${owner}/${repo}` || p.name.includes(cleanName)
-    )
-    if (existingProject) {
-      projectId = existingProject.id
-      console.log('Found existing project:', existingProject.name)
-    }
-  }
-
-  // If no existing project, try to create one
-  if (!projectId) {
-    const createProjectRes = await fetch(`${VERCEL_API}/v9/projects`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        name: `aegis-${cleanName}-${Date.now().toString(36)}`,
-        gitRepository: {
-          type: 'github',
-          repo: `${owner}/${repo}`
-        },
-        framework: null
-      })
-    })
-
-    const projectData = await createProjectRes.json()
-    
-    if (projectData.error) {
-      // GitHub repo not connected to Vercel
-      if (projectData.error.code === 'not_authorized' || projectData.error.message?.includes('not authorized')) {
-        throw new Error(`GitHub repo not connected to Vercel. Please import ${owner}/${repo} at https://vercel.com/new first.`)
-      }
-      throw new Error(projectData.error.message || 'Failed to create project')
-    }
-    
-    projectId = projectData.id
-  }
-
-  // Step 2: Create deployment from GitHub
   const deployRes = await fetch(`${VERCEL_API}/v13/deployments`, {
     method: 'POST',
     headers: {
@@ -102,13 +111,11 @@ async function deployToVercel(repoUrl: string, projectName: string): Promise<{
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      name: `aegis-${cleanName}`,
-      gitSource: {
-        type: 'github',
-        org: owner,
-        repo: repo,
-        ref: 'main' // or master
-      },
+      name: projectSlug,
+      files: files.map(f => ({
+        file: f.file,
+        data: f.data
+      })),
       projectSettings: {
         framework: null // Auto-detect
       }
@@ -118,40 +125,14 @@ async function deployToVercel(repoUrl: string, projectName: string): Promise<{
   const deployData = await deployRes.json()
   
   if (deployData.error) {
-    // Try with 'master' branch if 'main' fails
-    const retryRes = await fetch(`${VERCEL_API}/v13/deployments`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        name: `aegis-${cleanName}`,
-        gitSource: {
-          type: 'github',
-          org: owner,
-          repo: repo,
-          ref: 'master'
-        }
-      })
-    })
-    
-    const retryData = await retryRes.json()
-    if (retryData.error) {
-      throw new Error(retryData.error.message || 'Deployment failed')
-    }
-    
-    return {
-      deploymentId: retryData.id,
-      url: `https://${retryData.url}`,
-      projectId: retryData.projectId || projectId
-    }
+    console.error('Deployment error:', deployData.error)
+    throw new Error(deployData.error.message || 'Deployment failed')
   }
 
   return {
     deploymentId: deployData.id,
     url: `https://${deployData.url}`,
-    projectId: deployData.projectId || projectId
+    projectId: deployData.projectId || projectSlug
   }
 }
 
