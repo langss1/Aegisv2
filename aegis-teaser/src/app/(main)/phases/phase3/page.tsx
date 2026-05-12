@@ -183,22 +183,6 @@ export default function Phase3Page() {
           id: Date.now(),
           msg: `<b>Incident Resolved:</b> ${reason} attempt blocked on ${path}. IP has been temporary blacklisted.`
         }, ...prev.slice(0, 10)])
-
-        const telMsg = { id: Date.now(), msg: `Attack Blocked! Attempted ${reason} on ${path}` }
-        setNotifications(prev => [telMsg, ...prev.slice(0, 0)])
-        setTimeout(() => setNotifications(prev => prev.filter(n => n.id !== telMsg.id)), 4000)
-        
-        // Send real Telegram notification for attack
-        fetch('/api/telegram/notify', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            type: 'attack_blocked',
-            attackType: reason,
-            endpoint: path,
-            ip: `192.168.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`
-          })
-        }).catch(() => {})
       }
 
       if (terminalRef.current) {
