@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import styles from './phase0.module.css'
 import { motion, AnimatePresence } from 'framer-motion'
-import { getGitHubRepos } from '@/app/auth/github/actions'
+import { getGitHubRepos, analyzeGitHubRepo } from '@/app/auth/github/actions'
 import { createProject } from '@/app/actions/projects'
 
 export default function Phase0Page() {
@@ -30,6 +30,21 @@ export default function Phase0Page() {
       setRepos(repos || [])
     }
     setLoadingRepos(false)
+  }
+
+  const handleRepoImport = async (repo: any) => {
+    setSelectedRepo(repo)
+    setUrl(repo.html_url)
+    setStep('analyzing')
+    
+    // AI/Heuristic Analysis Real-Time
+    const { stack, error } = await analyzeGitHubRepo(repo.full_name)
+    if (!error) {
+      setDetectedStack(stack)
+    }
+    
+    // Delay sedikit agar user bisa melihat animasi log sistem
+    setTimeout(() => setStep('stack_confirm'), 3000)
   }
 
   const handleLaunch = (e: React.FormEvent) => {
@@ -120,12 +135,7 @@ export default function Phase0Page() {
                             </div>
                           </div>
                         </div>
-                        <button className={styles.fullImportBtn} onClick={() => { 
-                          setSelectedRepo(repo); 
-                          setUrl(repo.html_url); 
-                          setStep('analyzing'); 
-                          setTimeout(() => setStep('stack_confirm'), 2000); 
-                        }}>
+                        <button className={styles.fullImportBtn} onClick={() => handleRepoImport(repo)}>
                           Import
                         </button>
                       </div>
