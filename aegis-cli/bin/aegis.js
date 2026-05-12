@@ -69,14 +69,22 @@ async function handleLogin() {
   return new Promise((resolve) => {
     const port = 5732;
     const server = http.createServer(async (req, res) => {
+      // Full CORS support for browser handshake
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+      if (req.method === 'OPTIONS') {
+        res.writeHead(204);
+        res.end();
+        return;
+      }
+
       const parsedUrl = url.parse(req.url, true);
       const query = parsedUrl.query;
       
       if (parsedUrl.pathname === '/ping') {
-        res.writeHead(200, { 
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*' 
-        });
+        res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ status: 'waiting' }));
         return;
       }
@@ -147,7 +155,9 @@ async function handleLogin() {
 function handleLogout() {
   if (fs.existsSync(sessionPath)) fs.unlinkSync(sessionPath);
   session = null;
-  console.log(`\n${colors.yellow}✔ anda telah keluar. sesi dihapus.${colors.reset}\n`);
+  console.log(`\n${colors.yellow}✔ anda telah keluar. sesi dihapus.${colors.reset}`);
+  console.log(`${colors.red}Terminating Aegis secure session...${colors.reset}\n`);
+  process.exit(0);
 }
 function openUrl(url) {
   const platform = process.platform;

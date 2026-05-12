@@ -25,16 +25,20 @@ export default function LoginPage() {
       if (!session) return
 
       // Silent Handshake Logic: Probe for local terminal
-      try {
-        const ping = await fetch('http://localhost:5732/ping').then(r => r.json())
-        if (ping.status === 'waiting' || mode === 'cli') {
-          const target = new URL('http://localhost:5732')
-          target.searchParams.set('token', session.access_token)
-          target.searchParams.set('email', session.user.email || '')
-          window.location.href = target.toString()
+      const ports = ['localhost', '127.0.0.1']
+      for (const host of ports) {
+        try {
+          const ping = await fetch(`http://${host}:5732/ping`).then(r => r.json())
+          if (ping.status === 'waiting' || mode === 'cli') {
+            const target = new URL(`http://${host}:5732`)
+            target.searchParams.set('token', session.access_token)
+            target.searchParams.set('email', session.user.email || '')
+            window.location.href = target.toString()
+            return
+          }
+        } catch (e) {
+          // Continue to next host
         }
-      } catch (e) {
-        // No local terminal waiting, continue normal web flow
       }
     }
     checkSession()

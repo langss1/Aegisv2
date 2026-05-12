@@ -19,16 +19,20 @@ export default function DashboardPage() {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) return
 
-      try {
-        const ping = await fetch('http://localhost:5732/ping').then(r => r.json())
-        if (ping.status === 'waiting' || mode === 'cli') {
-          const target = new URL('http://localhost:5732')
-          target.searchParams.set('token', session.access_token)
-          target.searchParams.set('email', session.user.email || '')
-          window.location.href = target.toString()
+      const hosts = ['localhost', '127.0.0.1']
+      for (const host of hosts) {
+        try {
+          const ping = await fetch(`http://${host}:5732/ping`).then(r => r.json())
+          if (ping.status === 'waiting' || mode === 'cli') {
+            const target = new URL(`http://${host}:5732`)
+            target.searchParams.set('token', session.access_token)
+            target.searchParams.set('email', session.user.email || '')
+            window.location.href = target.toString()
+            return
+          }
+        } catch (e) {
+          // continue
         }
-      } catch (e) {
-        // No local terminal waiting
       }
     }
     checkCLIMode()

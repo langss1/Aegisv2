@@ -1,5 +1,5 @@
 {
-  "customKey": "sk-75367404b1c84dce95cc3e8e9198fd24",
+  "customKey": "",
   "activeModel": "aegis",
-  "ollamaModel": "qwen2.5:7b"
+  "ollamaModel": "llama3"
 }
