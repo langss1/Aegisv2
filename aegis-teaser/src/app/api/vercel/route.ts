@@ -85,16 +85,6 @@ async function deployToVercel(repoUrl: string, projectName: string): Promise<{
     .replace(/-+/g, '-')
     .substring(0, 50)
 
-  // Verify token is valid
-  const verifyRes = await fetch(`${VERCEL_API}/v2/user`, {
-    headers: { 'Authorization': `Bearer ${token}` }
-  })
-  
-  if (!verifyRes.ok) {
-    const verifyData = await verifyRes.json()
-    throw new Error(`Invalid Vercel token: ${verifyData.error?.message || 'Not authorized'}`)
-  }
-
   console.log(`Fetching files from GitHub: ${owner}/${repo}`)
   
   // Fetch all files from GitHub
