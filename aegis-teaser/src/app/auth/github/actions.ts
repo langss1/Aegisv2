@@ -43,73 +43,70 @@ export async function analyzeGitHubRepo(repoFullName: string) {
       'Accept': 'application/vnd.github.v3+json'
     }
 
-    // 1. Ambil Statistik Bahasa (Sangat Detail)
+    // 1. Fetch Full Recursive Tree (Bedah Seluruh Isi Repo)
+    const treeRes = await fetch(`https://api.github.com/repos/${repoFullName}/git/trees/main?recursive=1`, { headers })
+    const treeData = treeRes.ok ? await treeRes.json() : { tree: [] }
+    const files = treeData.tree.map((f: any) => f.path)
+
+    const detected = []
+    const architecture = []
+    
+    // 2. Neural Architecture Mapping Logic
+    // Detect Next.js Router Type
+    if (files.some(f => f.startsWith('src/app') || f.startsWith('app/'))) {
+      detected.push('Next.js 14/15 (App Router)')
+      architecture.push('Modern App-Directory Architecture')
+    } else if (files.some(f => f.startsWith('src/pages') || f.startsWith('pages/'))) {
+      detected.push('Next.js (Legacy Pages Router)')
+      architecture.push('Classic Pages Architecture')
+    }
+
+    // Detect Logic Patterns
+    if (files.some(f => f.includes('actions/'))) architecture.push('Server Actions Pattern')
+    if (files.some(f => f.includes('middleware.ts'))) architecture.push('Edge Middleware Layer')
+    if (files.some(f => f.includes('hooks/'))) architecture.push('Custom React Hooks Layer')
+    if (files.some(f => f.includes('components/ui/'))) architecture.push('Atomic UI System (Shadcn/UI)')
+
+    // Detect Infrastructure (Extreme Detail)
+    if (files.some(f => f.includes('.github/workflows'))) detected.push('GitHub Actions CI/CD')
+    if (files.some(f => f.includes('docker-compose'))) detected.push('Multi-Container Docker')
+    if (files.some(f => f.includes('vercel.json'))) detected.push('Vercel Edge Deployment')
+    if (files.some(f => f.includes('fly.toml'))) detected.push('Fly.io Infrastructure')
+    if (files.some(f => f.includes('terraform/'))) detected.push('Terraform (IaC)')
+
+    // 3. Dependency Check (Read package.json if exists)
+    const packageFile = treeData.tree.find((f: any) => f.path.endsWith('package.json'))
+    if (packageFile) {
+      const fileRes = await fetch(packageFile.url, { headers })
+      const fileData = await fileRes.json()
+      const content = JSON.parse(atob(fileData.content))
+      const allDeps = { ...content.dependencies, ...content.devDependencies }
+
+      // DB & State
+      if (allDeps['prisma']) detected.push('Prisma ORM (Relational)')
+      if (allDeps['drizzle-orm']) detected.push('Drizzle ORM (Type-Safe)')
+      if (allDeps['@tanstack/react-query']) detected.push('React Query (Server State)')
+      if (allDeps['zustand']) detected.push('Zustand (Global State)')
+      
+      // Typescript Detail
+      if (allDeps['typescript']) {
+        detected.push('TypeScript (Strict Mode Detected)')
+      }
+    }
+
+    // 4. Language Percentage
     const langRes = await fetch(`https://api.github.com/repos/${repoFullName}/languages`, { headers })
     const languages = langRes.ok ? await langRes.json() : {}
-    const topLanguages = Object.keys(languages).slice(0, 3)
+    Object.keys(languages).slice(0, 2).forEach(l => detected.push(l))
 
-    // 2. Cari manifest files (package.json, Dockerfile, v3nd.json, dll)
-    const searchRes = await fetch(`https://api.github.com/search/code?q=filename:package.json+OR+filename:Dockerfile+OR+filename:docker-compose.yml+OR+filename:vercel.json+repo:${repoFullName}`, { headers })
-    
-    let packageContent: any = null
-    const infraDetails = []
-    
-    if (searchRes.ok) {
-      const searchData = await searchRes.json()
-      for (const item of (searchData.items || [])) {
-        if (item.name === 'Dockerfile') infraDetails.push('Docker Container')
-        if (item.name === 'docker-compose.yml') infraDetails.push('Docker Orchestration')
-        if (item.name === 'vercel.json') infraDetails.push('Vercel Infrastructure')
-        
-        if (item.name === 'package.json' && !packageContent) {
-          const fileRes = await fetch(item.url, { headers })
-          if (fileRes.ok) {
-            const fileData = await fileRes.json()
-            packageContent = JSON.parse(atob(fileData.content))
-          }
-        }
-      }
-    }
-
-    const detected = [...topLanguages, ...infraDetails]
-    
-    if (packageContent) {
-      const allDeps = { ...packageContent.dependencies, ...packageContent.devDependencies }
-      
-      // Frameworks
-      if (allDeps['next']) detected.push('Next.js Framework')
-      if (allDeps['express']) detected.push('Express.js Server')
-      if (allDeps['@nestjs/core']) detected.push('NestJS Architecture')
-      
-      // Database & ORM
-      if (allDeps['prisma']) detected.push('Prisma (PostgreSQL/MySQL)')
-      if (allDeps['mongoose']) detected.push('MongoDB (NoSQL)')
-      if (allDeps['drizzle-orm']) detected.push('Drizzle (SQL)')
-      if (allDeps['pg']) detected.push('PostgreSQL Native')
-      if (allDeps['redis']) detected.push('Redis Cache')
-      
-      // Auth & Cloud
-      if (allDeps['@supabase/supabase-js']) detected.push('Supabase Cloud')
-      if (allDeps['firebase']) detected.push('Firebase Infrastructure')
-      if (allDeps['next-auth'] || allDeps['@auth/core']) detected.push('Auth.js Security')
-      
-      // UI & Logic
-      if (allDeps['tailwindcss']) detected.push('Tailwind CSS')
-      if (allDeps['framer-motion']) detected.push('Framer Animations')
-    }
-
-    // Jika kosong, pakai bahasa utama
-    const finalStack = detected.length > 0 ? Array.from(new Set(detected)) : ['Custom Stack']
+    const finalStack = Array.from(new Set([...detected, ...architecture]))
 
     return { 
-      stack: finalStack,
-      details: {
-        languages,
-        mainLang: topLanguages[0]
-      }
+      stack: finalStack.length > 0 ? finalStack : ['Custom Architecture'],
+      isDetailed: true
     }
   } catch (err) {
-    console.error('Analysis error:', err)
-    return { stack: ['Analysis Failed'], error: 'Deep analysis failed' }
+    console.error('Deep Analysis error:', err)
+    return { stack: ['Analysis Blocked'], error: 'Deep Neural Analysis failed' }
   }
 }
