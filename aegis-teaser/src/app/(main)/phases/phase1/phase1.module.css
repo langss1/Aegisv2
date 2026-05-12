@@ -519,6 +519,168 @@
 .vulnerable .codeContent { color: #ef4444; }
 .fixed .codeContent { color: #22c55e; }
 
+/* ============================================
+   CODE DIFF - Before & After View
+   ============================================ */
+.codeDiff {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+}
+
+.diffBlock {
+  background: #0a0a0a;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.diffHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 16px;
+  background: rgba(220, 38, 38, 0.15);
+  border-bottom: 1px solid rgba(220, 38, 38, 0.2);
+}
+
+.diffHeaderFixed {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 16px;
+  background: rgba(34, 197, 94, 0.15);
+  border-bottom: 1px solid rgba(34, 197, 94, 0.2);
+}
+
+.diffLabel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #fff;
+}
+
+.diffIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  background: #dc2626;
+  color: #fff;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.diffIconAdd {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  background: #22c55e;
+  color: #fff;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.diffFile {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.diffCode {
+  display: flex;
+  padding: 12px 16px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  overflow-x: auto;
+}
+
+.diffLineNum {
+  color: rgba(255, 255, 255, 0.2);
+  padding-right: 16px;
+  margin-right: 16px;
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  user-select: none;
+  min-width: 30px;
+  text-align: right;
+}
+
+.diffLineRemoved {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  flex: 1;
+  background: rgba(220, 38, 38, 0.1);
+  padding: 8px 12px;
+  border-radius: 6px;
+  border-left: 3px solid #dc2626;
+}
+
+.diffLineRemoved code {
+  color: #f87171;
+  word-break: break-all;
+}
+
+.diffMinus {
+  color: #dc2626;
+  font-weight: bold;
+  font-size: 14px;
+}
+
+.diffLineAdded {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  flex: 1;
+  background: rgba(34, 197, 94, 0.1);
+  padding: 8px 12px;
+  border-radius: 6px;
+  border-left: 3px solid #22c55e;
+}
+
+.diffLineAdded code {
+  color: #4ade80;
+  word-break: break-all;
+}
+
+.diffPlus {
+  color: #22c55e;
+  font-weight: bold;
+  font-size: 14px;
+}
+
+.diffArrow {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 0;
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 20px;
+}
+
+.diffArrowLabel {
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 1px;
+  color: #3b82f6;
+  background: rgba(59, 130, 246, 0.1);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
 /* Action Buttons */
 .actionButtons {
   display: flex;

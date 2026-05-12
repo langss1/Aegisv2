@@ -489,36 +489,46 @@ export default function Phase1Page() {
                         <p className={styles.issueDesc}>{selectedFinding.description}</p>
                       </div>
 
-                      {/* Code Blocks */}
-                      <div className={styles.codeSection}>
-                        <div className={styles.codeBlock}>
-                          <div className={`${styles.codeBlockHeader} ${styles.vulnerable}`}>
-                            VULNERABLE CODE
+                      {/* Code Diff - Before & After */}
+                      <div className={styles.codeDiff}>
+                        {/* BEFORE - Vulnerable Code */}
+                        <div className={styles.diffBlock}>
+                          <div className={styles.diffHeader}>
+                            <span className={styles.diffLabel}>
+                              <span className={styles.diffIcon}>−</span>
+                              BEFORE
+                            </span>
+                            <span className={styles.diffFile}>{selectedFinding.file}:{selectedFinding.line}</span>
                           </div>
-                          <div className={`${styles.codeArea} ${styles.vulnerable}`}>
-                            <div className={styles.lineNumbers}>
-                              {selectedFinding.line - 1}<br />
-                              {selectedFinding.line}<br />
-                              {selectedFinding.line + 1}
-                            </div>
-                            <div className={styles.codeContent}>
-                              {`// ${selectedFinding.file}\n${selectedFinding.currentCode}\n// ...`}
+                          <div className={styles.diffCode}>
+                            <div className={styles.diffLineNum}>{selectedFinding.line}</div>
+                            <div className={styles.diffLineRemoved}>
+                              <span className={styles.diffMinus}>−</span>
+                              <code>{selectedFinding.currentCode}</code>
                             </div>
                           </div>
                         </div>
 
-                        <div className={styles.codeBlock}>
-                          <div className={`${styles.codeBlockHeader} ${styles.fixed}`}>
-                            AEGIS PATCH (SECURED)
+                        {/* Arrow Indicator */}
+                        <div className={styles.diffArrow}>
+                          <span>↓</span>
+                          <span className={styles.diffArrowLabel}>AEGIS FIX</span>
+                        </div>
+
+                        {/* AFTER - Fixed Code */}
+                        <div className={styles.diffBlock}>
+                          <div className={styles.diffHeaderFixed}>
+                            <span className={styles.diffLabel}>
+                              <span className={styles.diffIconAdd}>+</span>
+                              AFTER
+                            </span>
+                            <span className={styles.diffFile}>{selectedFinding.file}:{selectedFinding.line}</span>
                           </div>
-                          <div className={`${styles.codeArea} ${styles.fixed}`}>
-                            <div className={styles.lineNumbers}>
-                              {selectedFinding.line - 1}<br />
-                              {selectedFinding.line}<br />
-                              {selectedFinding.line + 1}
-                            </div>
-                            <div className={styles.codeContent}>
-                              {`// ${selectedFinding.file}\n${selectedFinding.fixedCode}\n// ...`}
+                          <div className={styles.diffCode}>
+                            <div className={styles.diffLineNum}>{selectedFinding.line}</div>
+                            <div className={styles.diffLineAdded}>
+                              <span className={styles.diffPlus}>+</span>
+                              <code>{selectedFinding.fixedCode}</code>
                             </div>
                           </div>
                         </div>
