@@ -6,8 +6,9 @@ import { fetchHealings, updateHealingStatus, pollTelegramCallbacks } from "@/lib
 
 interface HealingState {
   actions: HealingAction[];
+  sessionId: string | null;
   _initialized: boolean;
-  init: () => void;
+  init: (sessionId: string) => void;
   reverseAction: (id: string, by: string) => void;
   approveAction: (id: string, by: string) => void;
   refreshFromServer: () => Promise<void>;
@@ -15,38 +16,36 @@ interface HealingState {
 
 export const useHealingStore = create<HealingState>((set, get) => ({
   actions: [],
+  sessionId: null,
   _initialized: false,
 
-  init: async () => {
-    if (get()._initialized) return;
-    set({ _initialized: true });
+  init: async (sessionId: string) => {
+    set({ sessionId });
 
     // Initial fetch from server
-    const data = await fetchHealings();
+    const data = await fetchHealings(sessionId);
     if (data.ok && data.healings) {
-      set({ actions: data.healings });
+      set({ actions: data.healings, _initialized: true });
     }
 
     bus.on("healing", (action) => {
       set((s) => ({ actions: [action, ...s.actions] }));
     });
 
-    // Poll Telegram callbacks every 3 seconds to process approve/revert actions
+    // Poll Telegram callbacks every 3 seconds
     const pollCallbacks = async () => {
-      try {
-        await pollTelegramCallbacks();
-        // After processing callbacks, fetch latest healings
-      } catch (err) {
+      try { await pollTelegramCallbacks(); } catch (err) {
         console.error("[HealingStore] Callback poll error:", err);
       }
     };
     setInterval(pollCallbacks, 3000);
 
-    // Poll server every 2 seconds for healings (from simulate, telegram callbacks, etc.)
-    // Server is always source of truth
+    // Poll server every 2 seconds (server is always source of truth)
     const pollServer = async () => {
       try {
-        const data = await fetchHealings();
+        const sid = get().sessionId;
+        if (!sid) return;
+        const data = await fetchHealings(sid);
         if (data.ok && data.healings) {
           const serverHealings = data.healings as HealingAction[];
           const currentActions = get().actions;
@@ -129,10 +128,11 @@ export const useHealingStore = create<HealingState>((set, get) => ({
   },
 
   refreshFromServer: async () => {
+    const sid = get().sessionId;
+    if (!sid) return;
     console.log("[HealingStore] refreshFromServer called");
-    const data = await fetchHealings();
+    const data = await fetchHealings(sid);
     if (data.ok && data.healings) {
-      console.log("[HealingStore] Got healings from server:", data.healings.map((h: HealingAction) => ({ id: h.id, status: h.status })));
       set({ actions: data.healings });
     }
   },
