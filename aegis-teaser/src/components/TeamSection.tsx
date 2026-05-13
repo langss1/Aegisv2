@@ -19,9 +19,7 @@ const TEAM = [
     role: 'Threat Intelligence Analyst',
     achievements: [
       { text: 'Analyst at Police Headquarter RI', year: '2025' },
-      { text: 'Top 3 CTF Competition Cyber Cohesions', year: '2025' },
       { text: 'BSSN Vulnerability Finding Award', year: '2025' },
-      { text: 'Open Source AI-based SOC Research', year: 'Research' },
       { text: '3-Way Phishing Detection Research', year: 'Research' }
     ],
     color: '#ff0000'
