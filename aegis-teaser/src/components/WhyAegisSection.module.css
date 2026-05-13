@@ -19,9 +19,9 @@
 }
 
 .title {
-  font-family: var(--font-heading);
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
   font-size: clamp(32px, 5vw, 48px);
-  font-weight: 700;
+  font-weight: 800;
   color: #ffffff;
 }
 
@@ -51,62 +51,53 @@
 .card {
   display: flex;
   flex-direction: column;
-  background: transparent;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 24px;
+  overflow: hidden;
+  transition: all 0.5s cubic-bezier(0.2, 0.65, 0.3, 0.9);
   cursor: pointer;
-  transition: transform 0.4s cubic-bezier(0.2, 0.65, 0.3, 0.9);
 }
 
 .card:hover {
-  transform: translateY(-8px);
+  transform: translateY(-12px);
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 0, 0, 0.3);
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6);
 }
 
 .cardVisual {
   position: relative;
   width: 100%;
-  aspect-ratio: 1/1;
-  background: #080808;
-  border-radius: 24px;
-  margin-bottom: 24px;
+  aspect-ratio: 1 / 1;
+  background: #000000;
   overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  transition: all 0.3s ease;
 }
 
-.card:hover .cardVisual {
-  border-color: rgba(255, 0, 0, 0.3);
-  background: #0a0000;
-  box-shadow: 0 0 40px rgba(255, 0, 0, 0.1);
+.cardImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.8s cubic-bezier(0.2, 0.65, 0.3, 0.9);
+  filter: grayscale(40%) contrast(1.1);
 }
 
-.iconWrapper {
-  position: relative;
-  z-index: 2;
-  width: 80px;
-  height: 80px;
-  background: rgba(255, 0, 0, 0.05);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid rgba(255, 0, 0, 0.1);
-  box-shadow: 0 0 30px rgba(255, 0, 0, 0.05);
-  transition: transform 0.5s cubic-bezier(0.2, 0.65, 0.3, 0.9);
-}
-
-.card:hover .iconWrapper {
-  transform: scale(1.1) rotate(5deg);
-  background: rgba(255, 0, 0, 0.1);
-  border-color: rgba(255, 0, 0, 0.3);
+.card:hover .cardImage {
+  transform: scale(1.1);
+  filter: grayscale(0%) contrast(1.2);
 }
 
 .dotsOverlay {
   position: absolute;
   inset: 0;
-  background-image: radial-gradient(rgba(255, 0, 0, 0.05) 1px, transparent 1px);
-  background-size: 20px 20px;
+  background-image: radial-gradient(rgba(255, 0, 0, 0.2) 1px, transparent 1px);
+  background-size: 15px 15px;
+  z-index: 2;
+  pointer-events: none;
+  opacity: 0.3;
 }
 
 .cardTag {
@@ -123,17 +114,19 @@
   text-transform: uppercase;
   letter-spacing: 1px;
   border: 1px solid rgba(255, 255, 255, 0.1);
+  z-index: 3;
 }
 
 .cardContent {
+  padding: 24px;
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
 .cardTitle {
-  font-family: var(--font-heading);
-  font-size: 24px;
+  font-family: 'Helvetica Neue', Helvetica, sans-serif;
+  font-size: 20px;
   font-weight: 700;
   color: #ffffff;
   line-height: 1.3;

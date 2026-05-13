@@ -32,12 +32,14 @@ export default function HeroSection({ onComplete }: { onComplete: () => void }) 
             {words.map((word, i) => (
               <motion.span
                 key={i}
-                initial={{ opacity: 0, y: 15 }}
+                initial={{ opacity: 0, y: 40 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ 
-                  duration: 1.8, // Slightly slower for more 'float' feel
+                  type: 'spring',
+                  stiffness: 70,
+                  damping: 20,
                   delay: i * 0.4,
-                  ease: [0.2, 0.65, 0.3, 0.9] // Elegant floating landing
+                  mass: 1
                 }}
                 style={{ display: 'inline-block', marginRight: '0.25em' }}
               >

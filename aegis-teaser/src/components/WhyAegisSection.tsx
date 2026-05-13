@@ -6,32 +6,32 @@ import { ShieldAlert, Terminal, Landmark, Scale } from 'lucide-react'
 
 const CARDS = [
   {
-    title: 'Biggest Problem: Indonesia #1',
-    desc: 'BSSN 2024 reports Indonesia as the top target for cyber anomalies in SE Asia. Our infrastructure remains highly vulnerable to sophisticated threats.',
+    title: 'Indonesia: #1 Country Vulnerability',
+    desc: 'BSSN 2024 reports Indonesia as the top target for cyber anomalies. Our digital infrastructure faces unprecedented risks from global threat actors.',
     date: 'Jan 20, 2025',
     category: 'Market Risk',
-    Icon: ShieldAlert
+    image: 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&q=80&w=800&h=600'
   },
   {
-    title: 'Developer Neglect & Vibe Coding',
-    desc: 'Speed over security: Developers often ignore code safety for faster delivery, leaving fatal gaps that autonomous agents must heal immediately.',
+    title: 'Systemic Developer Negligence',
+    desc: 'Speed over security: Modern developer culture often ignores critical code safety, leaving fatal gaps that demand autonomous healing.',
     date: 'Dec 15, 2024',
     category: 'Internal Gap',
-    Icon: Terminal
+    image: 'https://images.unsplash.com/photo-1542831371-29b0f74f9713?auto=format&fit=crop&q=80&w=800&h=600'
   },
   {
-    title: 'Billions in Financial Loss',
-    desc: 'A single data breach in Indonesia now costs billions in recovery fees and irreversible loss of public trust. Security is no longer optional.',
+    title: 'Irreversible Financial Loss',
+    desc: 'A single data breach now costs billions in recovery and trust. In the agent-first era, security failures lead to immediate economic collapse.',
     date: 'Nov 22, 2024',
     category: 'Financial Impact',
-    Icon: Landmark
+    image: 'https://images.unsplash.com/photo-1611974714024-4607a55d46ed?auto=format&fit=crop&q=80&w=800&h=600'
   },
   {
-    title: 'Strict UU PDP Enforcement',
-    desc: 'The grace period for UU PDP 2024 has ended. Data leaks are now criminal offenses with heavy fines up to 2% of global annual revenue.',
+    title: 'Government & Legal Compliance',
+    desc: 'With UU PDP 2024 in full effect, data leaks are now criminal offenses. Organizations must comply or face heavy global revenue penalties.',
     date: 'Oct 17, 2024',
     category: 'Compliance',
-    Icon: Scale
+    image: 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?auto=format&fit=crop&q=80&w=800&h=600'
   }
 ]
 
@@ -40,7 +40,7 @@ export default function WhyAegisSection() {
     <section id="why" className={styles.section}>
       <div className={styles.container}>
         <div className={styles.header}>
-          <h2 className={styles.title}>The Security Crisis</h2>
+          <h2 className={styles.title}><b>The Security Crisis</b></h2>
           <button className={styles.viewBlog}>View Analysis</button>
         </div>
 
@@ -49,16 +49,14 @@ export default function WhyAegisSection() {
             <motion.div 
               key={i} 
               className={styles.card}
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.1 }}
+              transition={{ duration: 0.8, delay: i * 0.15 }}
               viewport={{ once: true }}
             >
               <div className={styles.cardVisual}>
                  <div className={styles.dotsOverlay} />
-                 <div className={styles.iconWrapper}>
-                   <card.Icon size={40} strokeWidth={1.5} color="#ff0000" />
-                 </div>
+                 <img src={card.image} alt={card.title} className={styles.cardImage} />
                  <div className={styles.cardTag}>{card.category}</div>
               </div>
               <div className={styles.cardContent}>
