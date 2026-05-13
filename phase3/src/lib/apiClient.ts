@@ -43,21 +43,28 @@ export async function analyzeWithAI(attack: {
   }
 }
 
-export async function fetchHealings() {
+export async function fetchHealings(sessionId?: string) {
   try {
-    const res = await fetch("/api/healing", { cache: "no-store" });
+    const url = sessionId ? `/api/healing?sessionId=${encodeURIComponent(sessionId)}` : "/api/healing";
+    const res = await fetch(url, { cache: "no-store" });
     return res.json();
   } catch (err) {
     console.error("[Fetch healings error]", err);
     return { ok: false, healings: [] };
   }
 }
-export async function updateHealingStatus(healingId: string, action: "approve" | "reverse", by: string) {
+
+export async function updateHealingStatus(
+  healingId: string,
+  action: "approve" | "reverse",
+  by: string,
+  sessionId?: string
+) {
   try {
     const res = await fetch("/api/healing", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ healingId, action, by }),
+      body: JSON.stringify({ healingId, action, by, sessionId }),
     });
     return res.json();
   } catch (err) {

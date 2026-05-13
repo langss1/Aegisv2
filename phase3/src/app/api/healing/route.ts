@@ -3,18 +3,20 @@ import { getAllHealings, getHealing, reverseHealing, approveHealing, clearAllHea
 import { editMessageText, getChatId } from "@/lib/telegram";
 
 /**
- * GET /api/healing — Return all healing actions from server store
- * Query: ?since=<timestamp> to only get events since a time
+ * GET /api/healing?sessionId=xxx
  */
 export async function GET(req: NextRequest) {
-  const healings = getAllHealings();
-  console.log("[API /healing] Returning healings:", healings.map(h => ({ id: h.id, status: h.status })));
+  const sessionId = new URL(req.url).searchParams.get("sessionId");
+  if (!sessionId) return NextResponse.json({ ok: false, error: "sessionId is required" }, { status: 400 });
+
+  const healings = await getAllHealings(sessionId);
+  console.log("[API /healing] Returning healings:", healings.map((h) => ({ id: h.id, status: h.status })));
   return NextResponse.json({ ok: true, healings, count: healings.length });
 }
 
 /**
  * POST /api/healing — Approve or reverse a healing from the dashboard
- * Body: { healingId, action: "approve" | "reverse", by?: string }
+ * Body: { healingId, action: "approve" | "reverse", by?, sessionId }
  */
 export async function POST(req: NextRequest) {
   try {
@@ -22,25 +24,20 @@ export async function POST(req: NextRequest) {
     const { healingId, action, by = "Operator (Dashboard)" } = body;
 
     if (!healingId || !action) {
-      return NextResponse.json(
-        { error: "healingId and action are required" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "healingId and action are required" }, { status: 400 });
     }
 
     if (action === "approve") {
-      // Get healing first to access telegram info
-      const healingBefore = getHealing(healingId);
-      const result = approveHealing(healingId, by);
+      const healingBefore = await getHealing(healingId);
+      const result = await approveHealing(healingId, by);
       if (!result) {
-        const existing = getHealing(healingId);
+        const existing = await getHealing(healingId);
         return NextResponse.json({
           ok: false,
           error: !existing ? "Healing not found" : `Already ${existing.status.toLowerCase()}`,
         });
       }
-      
-      // Update Telegram message if we have the message_id
+
       if (healingBefore?.telegramMessageId && healingBefore?.telegramChatId) {
         const updatedText = `✅ <b>Healing APPROVED (Web Dashboard)</b>
 
@@ -52,20 +49,17 @@ export async function POST(req: NextRequest) {
 <b>Time:</b> ${new Date().toLocaleString()}
 
 🔒 Patch is now <b>permanent</b>. Reverse window closed.`;
-        
         await editMessageText(healingBefore.telegramChatId, healingBefore.telegramMessageId, updatedText);
-        console.log(`[Healing API] Updated Telegram message ${healingBefore.telegramMessageId} for approve`);
       }
-      
+
       return NextResponse.json({ ok: true, healing: result, message: "Patch approved and locked" });
     }
 
     if (action === "reverse") {
-      // Get healing first to access telegram info
-      const healingBefore = getHealing(healingId);
-      const result = reverseHealing(healingId, by);
+      const healingBefore = await getHealing(healingId);
+      const result = await reverseHealing(healingId, by);
       if (!result) {
-        const existing = getHealing(healingId);
+        const existing = await getHealing(healingId);
         return NextResponse.json({
           ok: false,
           error: !existing
@@ -75,8 +69,7 @@ export async function POST(req: NextRequest) {
             : `Already ${existing.status.toLowerCase()}`,
         });
       }
-      
-      // Update Telegram message if we have the message_id
+
       if (healingBefore?.telegramMessageId && healingBefore?.telegramChatId) {
         const updatedText = `🔄 <b>Healing REVERTED (Web Dashboard)</b>
 
@@ -88,11 +81,9 @@ export async function POST(req: NextRequest) {
 <b>Time:</b> ${new Date().toLocaleString()}
 
 ⚠️ <b>Warning:</b> Endpoint is now <b>unprotected</b> against ${result.attackType}.`;
-        
         await editMessageText(healingBefore.telegramChatId, healingBefore.telegramMessageId, updatedText);
-        console.log(`[Healing API] Updated Telegram message ${healingBefore.telegramMessageId} for revert`);
       }
-      
+
       return NextResponse.json({
         ok: true,
         healing: result,
@@ -107,10 +98,13 @@ export async function POST(req: NextRequest) {
 }
 
 /**
- * DELETE /api/healing — Clear all healing actions (for testing/reset)
+ * DELETE /api/healing?sessionId=xxx — Clear all healing actions for a session
  */
-export async function DELETE() {
-  clearAllHealings();
-  console.log("[API /healing] Cleared all healing actions");
+export async function DELETE(req: NextRequest) {
+  const sessionId = new URL(req.url).searchParams.get("sessionId");
+  if (!sessionId) return NextResponse.json({ ok: false, error: "sessionId is required" }, { status: 400 });
+
+  await clearAllHealings(sessionId);
+  console.log(`[API /healing] Cleared all healing actions for session ${sessionId}`);
   return NextResponse.json({ ok: true, message: "All healing actions cleared" });
 }

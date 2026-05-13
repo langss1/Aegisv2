@@ -9,45 +9,47 @@ function randomId() {
 }
 
 /**
- * GET /api/attacks - Get all attacks
+ * GET /api/attacks?sessionId=xxx&since=ts
  */
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
+  const sessionId = searchParams.get("sessionId");
   const since = searchParams.get("since");
-  
-  const attacks = since ? getAttacksSince(parseInt(since)) : getAllAttacks();
-  
-  return NextResponse.json({ 
-    ok: true, 
-    attacks, 
-    count: attacks.length 
-  });
+
+  if (!sessionId) {
+    return NextResponse.json({ ok: false, error: "sessionId is required" }, { status: 400 });
+  }
+
+  const attacks = since
+    ? await getAttacksSince(sessionId, parseInt(since))
+    : await getAllAttacks(sessionId);
+
+  return NextResponse.json({ ok: true, attacks, count: attacks.length });
 }
 
 /**
- * POST /api/attacks - Report a new attack (from vulnerable app or external source)
- * Body: { attackType, severity, payload, endpoint, method, sourceIp, autoHeal? }
- * 
- * Uses DeepSeek AI to:
- * 1. Validate if this is a real attack (not false positive)
- * 2. Determine appropriate healing action
- * 3. Generate WAF blocking pattern
+ * POST /api/attacks
+ * Body: { sessionId, attackType, severity, payload, endpoint, method, sourceIp, autoHeal? }
  */
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { 
-      attackType, 
-      severity, 
-      payload, 
-      endpoint, 
-      method, 
+    const {
+      sessionId,
+      attackType,
+      severity,
+      payload,
+      endpoint,
+      method,
       sourceIp,
-      autoHeal = true
+      autoHeal = true,
     } = body;
 
     if (!attackType) {
       return NextResponse.json({ error: "attackType is required" }, { status: 400 });
+    }
+    if (!sessionId) {
+      return NextResponse.json({ error: "sessionId is required" }, { status: 400 });
     }
 
     const attackId = `atk_${randomId()}`;
@@ -65,10 +67,8 @@ export async function POST(req: NextRequest) {
         method: method || "GET",
         sourceIp: sourceIp || "unknown",
       });
-      console.log(`[Attacks API] AI recommendation:`, aiRecommendation);
     } catch (aiErr) {
       console.error("[Attacks API] AI analysis failed:", aiErr);
-      // Fallback to basic recommendation
       aiRecommendation = {
         shouldHeal: true,
         isFalsePositive: false,
@@ -82,9 +82,7 @@ export async function POST(req: NextRequest) {
       };
     }
 
-    // ─── Handle false positives ───────────────────────────────
     if (aiRecommendation.isFalsePositive || !aiRecommendation.shouldHeal) {
-      console.log(`[Attacks API] AI detected FALSE POSITIVE or low confidence, skipping healing`);
       return NextResponse.json({
         ok: true,
         attackId,
@@ -98,9 +96,9 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // ─── Register the confirmed attack ────────────────────────
-    registerAttack({
+    await registerAttack({
       id: attackId,
+      sessionId,
       type: aiRecommendation.attackType,
       severity: aiRecommendation.severity,
       sourceIp: sourceIp || "unknown",
@@ -114,12 +112,10 @@ export async function POST(req: NextRequest) {
 
     let healingResult = null;
 
-    // ─── Auto-create AI-recommended healing action ────────────
     if (autoHeal) {
       const healingId = `heal_${randomId()}`;
       const chatId = getChatId();
 
-      // Send Telegram notification with AI analysis
       let telegramMessageId: number | undefined;
       if (chatId) {
         const healingMsg = buildHealingMessage({
@@ -132,15 +128,14 @@ export async function POST(req: NextRequest) {
           targetEndpoint: endpoint,
         });
         const keyboard = buildHealingKeyboard(healingId);
-        
         const liveMsg = `🔴 <b>LIVE ATTACK DETECTED</b>\n🤖 <i>AI Confidence: ${aiRecommendation.confidence}%</i>\n\n${healingMsg}\n\n💡 <b>AI Analysis:</b> ${aiRecommendation.explanation}`;
         const result = await sendMessage(chatId, liveMsg, keyboard);
         telegramMessageId = result.ok ? result.result?.message_id : undefined;
       }
 
-      // Register healing with AI-generated details
-      registerHealing({
+      await registerHealing({
         id: healingId,
+        sessionId,
         attackType: aiRecommendation.attackType,
         severity: aiRecommendation.severity,
         sourceIp: sourceIp || "unknown",
@@ -149,7 +144,7 @@ export async function POST(req: NextRequest) {
         payload: payload || "",
         patch: aiRecommendation.patchName,
         wafRuleId: aiRecommendation.wafRuleId,
-        blockPattern: aiRecommendation.blockPattern, // AI-generated regex
+        blockPattern: aiRecommendation.blockPattern,
         status: "Applied",
         appliedAt: timestamp,
         reverseDeadline: timestamp + 30 * 60 * 1000,
@@ -184,9 +179,11 @@ export async function POST(req: NextRequest) {
 }
 
 /**
- * DELETE /api/attacks - Clear all attacks
+ * DELETE /api/attacks?sessionId=xxx
  */
-export async function DELETE() {
-  clearAllAttacks();
-  return NextResponse.json({ ok: true, message: "All attacks cleared" });
+export async function DELETE(req: NextRequest) {
+  const sessionId = new URL(req.url).searchParams.get("sessionId");
+  if (!sessionId) return NextResponse.json({ ok: false, error: "sessionId is required" }, { status: 400 });
+  await clearAllAttacks(sessionId);
+  return NextResponse.json({ ok: true, message: "All attacks for session cleared" });
 }
