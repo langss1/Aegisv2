@@ -3,7 +3,6 @@ import { useState, useEffect, useRef } from 'react'
 import styles from './DemoSection.module.css'
 
 export default function DemoSection() {
-  const [playing, setPlaying] = useState(false)
   const sectionRef = useRef<HTMLElement>(null)
   const [scale, setScale] = useState(0.8)
 
@@ -34,31 +33,13 @@ export default function DemoSection() {
             opacity: Math.min(scale * 1.5 - 0.5, 1)
         }}
       >
-        {!playing ? (
-          <div className={styles.thumbnail}>
-             <div className={styles.overlay}>
-                <div className={styles.brand}>
-                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none">
-                        <path d="M12 2L3 7v10l9 5 9-5V7L12 2z" stroke="white" strokeWidth="1.5" fill="rgba(255,0,0,0.4)"/>
-                        <path d="M12 2v20M3 7l9 5 9-5" stroke="white" strokeWidth="1" strokeOpacity="0.6"/>
-                    </svg>
-                    <span className={styles.brandName}>Aegis Agentic</span>
-                </div>
-                <button className={styles.playIntro} onClick={() => setPlaying(true)}>
-                    <span>▶</span> Play intro
-                </button>
-             </div>
-             <div className={styles.dotsBg} />
-          </div>
-        ) : (
-          <iframe
-            className={styles.iframe}
-            src="https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1"
-            title="Aegis Intro"
-            allow="autoplay; encrypted-media"
-            allowFullScreen
-          />
-        )}
+        <iframe
+          className={styles.iframe}
+          src="https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1&mute=1&controls=0&loop=1&playlist=dQw4w9WgXcQ"
+          title="Aegis Intro"
+          allow="autoplay; encrypted-media"
+          allowFullScreen
+        />
       </div>
     </section>
   )
