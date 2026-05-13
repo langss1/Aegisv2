@@ -24,13 +24,13 @@ export default function IconRibbonSection() {
 
   // Smooth out the scroll progress
   const smoothProgress = useSpring(scrollYProgress, {
-    stiffness: 100,
-    damping: 30,
+    stiffness: 60, // Slower responsiveness
+    damping: 25,
     restDelta: 0.001
   })
 
-  // Horizontal movement using smoothed progress
-  const xTranslate = useTransform(smoothProgress, [0, 1], [0, -1200])
+  // Horizontal movement using smoothed progress - reduced distance for slower feel
+  const xTranslate = useTransform(smoothProgress, [0, 1], [0, -600])
 
   const fullText = "Aegis is the autonomous security agent platform, designed to analyze, defend, and heal your infrastructure in the agent-first era. We empower developers with advanced AI agents that identify vulnerabilities, mitigate risks, and ensure a robust security posture across your entire tech stack."
 
@@ -51,7 +51,7 @@ export default function IconRibbonSection() {
                 className={styles.iconCircle}
                 style={{ transform: `translateY(${yOffset}px)` }}
               >
-                <Icon size={24} strokeWidth={1.5} color="rgba(255,255,255,0.8)" />
+                <Icon size={24} strokeWidth={1.5} color="rgba(255, 0, 0, 0.8)" />
               </div>
             )
           })}
