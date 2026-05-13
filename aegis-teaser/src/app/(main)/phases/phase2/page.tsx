@@ -221,6 +221,9 @@ export default function Phase2Page() {
     ))
 
     addLog(`[FIX] ✓ ${vuln.file}:${vuln.line} - Fixed!`)
+    addLog(`[GIT] Auto-pushing fix to GitHub repository...`)
+    await new Promise(r => setTimeout(r, 1000))
+    addLog(`[GIT] ✓ Successfully pushed to GitHub.`)
     setSelectedVuln(null)
   }
 
@@ -251,6 +254,15 @@ export default function Phase2Page() {
     setApplyingAll(false)
     addLog('═══════════════════════════════════════')
     addLog('ALL FIXES APPLIED!')
+    addLog('Initiating Auto-Push to GitHub...')
+    await new Promise(r => setTimeout(r, 1000))
+    addLog('[GIT] git add .')
+    await new Promise(r => setTimeout(r, 500))
+    addLog('[GIT] git commit -m "fix(security): auto-remediated vulnerabilities via AEGIS"')
+    await new Promise(r => setTimeout(r, 1000))
+    addLog('[GIT] git push origin main')
+    await new Promise(r => setTimeout(r, 1500))
+    addLog('✅ Successfully pushed fixed code to GitHub repository.')
     addLog('═══════════════════════════════════════')
   }
 
