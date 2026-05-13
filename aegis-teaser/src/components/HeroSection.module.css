@@ -39,14 +39,14 @@
   background: linear-gradient(
     -45deg, 
     #ffffff, 
-    #ff0000, 
-    #ffffff, 
+    #ff3333, 
+    #f0f0f0, 
     #ff0000
   );
-  background-size: 400% 400%;
+  background-size: 300% 300%;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  animation: gradientFlow 6s ease infinite;
+  animation: gradientFlow 12s ease infinite;
 }
 
 @keyframes gradientFlow {
