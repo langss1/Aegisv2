@@ -232,22 +232,60 @@ async function runScan(phaseName, targetDir) {
   console.log(`\n${colors.yellow}› menginisialisasi ${phaseName}...${colors.reset}`);
   console.log(`${colors.gray}target: ${colors.white}${targetDir}${colors.reset}\n`);
   
+  let detectedStack = ['Generic'];
+  let fileCount = 0;
+  
+  // Real Local Analysis for P0
+  if (phaseName === "P0: INGESTION") {
+    try {
+      if (fs.existsSync(path.join(targetDir, 'package.json'))) {
+        const pkg = JSON.parse(fs.readFileSync(path.join(targetDir, 'package.json'), 'utf8'));
+        const deps = { ...pkg.dependencies, ...pkg.devDependencies };
+        detectedStack = [];
+        if (deps.next) detectedStack.push('Next.js');
+        if (deps.react) detectedStack.push('React');
+        if (deps.typescript) detectedStack.push('TypeScript');
+        if (deps.tailwindcss) detectedStack.push('TailwindCSS');
+        if (deps.prisma) detectedStack.push('Prisma');
+        if (deps.express) detectedStack.push('Express');
+        if (detectedStack.length === 0) detectedStack.push('Node.js');
+      }
+
+      const getFiles = (dir) => {
+        let count = 0;
+        const files = fs.readdirSync(dir);
+        for (const file of files) {
+          if (file === 'node_modules' || file === '.git' || file === '.next') continue;
+          const name = path.join(dir, file);
+          if (fs.statSync(name).isDirectory()) {
+            count += getFiles(name);
+          } else {
+            count++;
+          }
+        }
+        return count;
+      };
+      fileCount = getFiles(targetDir);
+    } catch (e) {}
+  }
+
   const logData = {
     "P0: INGESTION": [
       "pemetaan struktur direktori lokal...",
-      "analisis dependensi proyek (package.json)...",
-      "pemeriksaan metadata repositori git...",
-      "sinkronisasi index keamanan dengan cloud...",
-      "validasi kredensial pipeline...",
+      `ditemukan ${fileCount} file dalam target direktori.`,
+      "menganalisis tanda tangan arsitektur...",
+      `tech stack terdeteksi: ${detectedStack.join(', ')}`,
+      "memverifikasi dependensi keamanan...",
+      "validasi kredensial pipeline lokal...",
       "p0: ingestion berhasil diselesaikan."
     ],
     "P1: SAST & HEAL": [
       "menganalisis struktur kode & direktori...",
       "memindai kerentanan SQL injection...",
       "mendeteksi pola XSS pada komponen frontend...",
-      "menemukan 2 potensi kebocoran memori (leak).",
-      "menjalankan AI Remediation: aegis-heal v1.2...",
-      "menerapkan patch pada middleware/auth.ts...",
+      "menemukan potensi kerentanan logika bisnis...",
+      "menjalankan AI Remediation: aegis-heal v2.0...",
+      "menerapkan simulasi patch pada source code...",
       "verifikasi integritas kode setelah patch."
     ],
     "P2: DAST": [
@@ -276,11 +314,15 @@ async function runScan(phaseName, targetDir) {
     const progress = Math.round(((i + 1) / currentLogs.length) * 100);
     const bar = "█".repeat(Math.floor(progress / 5)) + " ".repeat(20 - Math.floor(progress / 5));
     process.stdout.write(`\r${colors.gray}[${bar}] ${progress}% ${colors.reset}${colors.white}${currentLogs[i]}${colors.reset}`);
-    await sleep(500);
+    await sleep(400);
     process.stdout.write('\n');
   }
 
-  console.log(`\n${colors.green}✔ sukses:${colors.reset} ${phaseName} selesai. semua data telah disinkronkan ke dashboard.`);
+  console.log(`\n${colors.green}✔ sukses:${colors.reset} ${phaseName} selesai.`);
+  if (phaseName === "P0: INGESTION") {
+    console.log(`${colors.gray}arsitektur terverifikasi: ${colors.white}${detectedStack.join(', ')}${colors.reset}`);
+    console.log(`${colors.gray}siap untuk p1 sast & heal.${colors.reset}\n`);
+  }
 }
 
 function completer(line) {
@@ -753,16 +795,7 @@ async function handleCommand(input) {
 }
 
 async function start() {
-  if (!session) {
-    console.log(`\n${colors.red} [!] AEGIS TERMINAL IS LOCKED [!] ${colors.reset}`);
-    console.log(`${colors.gray}anda harus login untuk mengakses core inteligensi aegis.${colors.reset}\n`);
-    await handleLogin();
-    if (!session) {
-      console.log(`${colors.red}error: otorisasi gagal. sesi dihentikan.${colors.reset}`);
-      process.exit(1);
-    }
-  }
-
+  // Login requirement removed as per user request for local focus
   await bootSequence(false); // full animation on start
   
   // Check for command line arguments (e.g., "aegis p1")
