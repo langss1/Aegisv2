@@ -48,12 +48,15 @@
 
 .headlineCentered {
   font-family: var(--font-heading);
-  font-size: clamp(48px, 8vw, 96px);
+  font-size: clamp(32px, 6vw, 72px);
   font-weight: 800;
-  line-height: 1.05;
+  line-height: 1.1;
   color: #ffffff;
-  margin-bottom: 40px;
-  letter-spacing: -2px;
+  margin-bottom: 32px;
+  letter-spacing: -1px;
+  background: linear-gradient(to bottom, #ffffff 50%, #ffaaaa 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .cursor {

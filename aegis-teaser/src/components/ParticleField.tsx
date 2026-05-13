@@ -25,13 +25,13 @@ export default function ParticleField() {
       constructor() {
         this.x = Math.random() * (canvas?.width || 1200)
         this.y = Math.random() * (canvas?.height || 800)
-        this.vx = (Math.random() - 0.5) * 0.2
-        this.vy = (Math.random() - 0.5) * 0.2
+        this.vx = (Math.random() - 0.5) * 0.15
+        this.vy = (Math.random() - 0.5) * 0.15
         this.life = 0
-        this.maxLife = 400 + Math.random() * 600
-        this.size = Math.random() * 1.5 + 0.5
-        // Red gradient palette
-        const colors = ['rgba(255, 0, 0,', 'rgba(153, 27, 27,', 'rgba(220, 38, 38,', 'rgba(127, 29, 29,']
+        this.maxLife = 600 + Math.random() * 800
+        this.size = Math.random() * 1.0 + 0.2
+        // Finer red/white mist palette
+        const colors = ['rgba(255, 255, 255,', 'rgba(255, 0, 0,', 'rgba(220, 38, 38,', 'rgba(255, 150, 150,']
         this.color = colors[Math.floor(Math.random() * colors.length)]
       }
       update() {
@@ -62,7 +62,7 @@ export default function ParticleField() {
       if (!canvas || !ctx) return
       ctx.clearRect(0, 0, canvas.width, canvas.height)
       
-      if (particles.length < 150) {
+      if (particles.length < 400) {
         particles.push(new Particle())
       }
       
