@@ -1,3 +1,6 @@
+'use client'
+import { useState } from 'react'
+import styles from './ForWhoSection.module.css'
 import { motion } from 'framer-motion'
 import { Code2, Building2, Terminal, ShieldCheck, Zap, Activity } from 'lucide-react'
 
