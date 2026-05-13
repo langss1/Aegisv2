@@ -6,16 +6,7 @@ import styles from './HeroSection.module.css'
 export default function HeroSection({ onComplete }: { onComplete: () => void }) {
   const [text, setText] = useState('')
   const [isDone, setIsDone] = useState(false)
-  const fullText = 'AI Security Agentic Self Healing'
-  const [mousePos, setMousePos] = useState({ x: -500, y: -500 })
-
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      setMousePos({ x: e.clientX, y: e.clientY })
-    }
-    window.addEventListener('mousemove', handleMouseMove)
-    return () => window.removeEventListener('mousemove', handleMouseMove)
-  }, [])
+  const fullText = 'A NEW WAY TO STAY SECURE WITH AGENTIC AI'
 
   useEffect(() => {
     let i = 0
@@ -29,21 +20,12 @@ export default function HeroSection({ onComplete }: { onComplete: () => void }) 
           onComplete()
         }, 800)
       }
-    }, 60)
+    }, 50)
     return () => clearInterval(interval)
-  }, [onComplete])
+  }, []) // Empty dependency array ensures it only runs once
 
   return (
     <section className={styles.hero}>
-      {/* Cursor Spotlight */}
-      <div 
-        className={styles.spotlight} 
-        style={{ 
-          left: mousePos.x,
-          top: mousePos.y
-        }} 
-      />
-
       <div className={styles.containerCentered}>
         <div className={styles.contentCentered}>
           <div className={styles.badgeCentered}>
@@ -56,7 +38,7 @@ export default function HeroSection({ onComplete }: { onComplete: () => void }) 
 
           <div className={`${styles.revealContent} ${isDone ? styles.visible : ''}`}>
             <p className={styles.subtextCentered}>
-               A new way to stay secure with autonomous agents.
+               Empowering developers with autonomous security agents.
             </p>
 
             <div className={styles.actionsCentered}>

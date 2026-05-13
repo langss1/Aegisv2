@@ -25,13 +25,13 @@ export default function ParticleField() {
       constructor() {
         this.x = Math.random() * (canvas?.width || 1200)
         this.y = Math.random() * (canvas?.height || 800)
-        this.vx = (Math.random() - 0.5) * 0.15
-        this.vy = (Math.random() - 0.5) * 0.15
+        this.vx = (Math.random() - 0.5) * 0.4
+        this.vy = (Math.random() - 0.5) * 0.4
         this.life = 0
-        this.maxLife = 600 + Math.random() * 800
-        this.size = Math.random() * 1.0 + 0.2
-        // Finer red/white mist palette
-        const colors = ['rgba(255, 255, 255,', 'rgba(255, 0, 0,', 'rgba(220, 38, 38,', 'rgba(255, 150, 150,']
+        this.maxLife = 400 + Math.random() * 600
+        this.size = Math.random() * 1.5 + 0.5
+        // Vibrant red and white rintik-rintik
+        const colors = ['rgba(255, 255, 255,', 'rgba(255, 0, 0,', 'rgba(255, 0, 0,', 'rgba(255, 50, 50,']
         this.color = colors[Math.floor(Math.random() * colors.length)]
       }
       update() {

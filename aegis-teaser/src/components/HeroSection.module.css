@@ -47,16 +47,17 @@
 }
 
 .headlineCentered {
-  font-family: var(--font-heading);
-  font-size: clamp(32px, 6vw, 72px);
+  font-family: var(--font-poppins), sans-serif;
+  font-size: clamp(32px, 5vw, 64px);
   font-weight: 800;
   line-height: 1.1;
   color: #ffffff;
   margin-bottom: 32px;
-  letter-spacing: -1px;
-  background: linear-gradient(to bottom, #ffffff 50%, #ffaaaa 100%);
+  letter-spacing: -2px;
+  background: linear-gradient(to bottom, #ffffff 30%, #ff0000 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
+  text-transform: uppercase;
 }
 
 .cursor {
