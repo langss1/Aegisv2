@@ -61,8 +61,8 @@ export default function IconRibbonSection() {
       <div className={styles.textContainer}>
         <motion.h2 
           className={styles.titleText}
-          initial={{ opacity: 0, x: -30 }}
-          whileInView={{ opacity: 1, x: 0 }}
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
           transition={{ duration: 2.0, ease: [0.22, 1, 0.36, 1] }}
           viewport={{ once: true }}
         >
@@ -70,9 +70,9 @@ export default function IconRibbonSection() {
         </motion.h2>
         <motion.p 
           className={styles.paragraphText}
-          initial={{ opacity: 0, x: -30 }}
-          whileInView={{ opacity: 1, x: 0 }}
-          transition={{ duration: 2.0, ease: [0.22, 1, 0.36, 1], delay: 0.2 }}
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          transition={{ duration: 2.0, ease: [0.22, 1, 0.36, 1], delay: 0.3 }}
           viewport={{ once: true }}
         >
           {fullText}
