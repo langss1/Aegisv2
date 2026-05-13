@@ -8,6 +8,7 @@ interface Finding {
   id: number
   file: string
   issue: string
+  type?: string
   severity: 'Critical' | 'High' | 'Medium' | 'Low'
   line: number
   currentCode: string
