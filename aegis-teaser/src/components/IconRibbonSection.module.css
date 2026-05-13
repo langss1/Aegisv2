@@ -45,27 +45,27 @@
 }
 
 .textContainer {
-  max-width: 900px;
+  max-width: 1600px;
+  margin: 0 auto;
   text-align: left;
   width: 100%;
   padding: 0 80px;
-  margin-right: auto;
 }
 
 .titleText {
   font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-  font-size: clamp(32px, 5vw, 48px);
+  font-size: clamp(28px, 4vw, 36px);
   font-weight: 800;
   color: #ffffff;
-  margin-bottom: 24px;
-  letter-spacing: -1px;
+  margin-bottom: 20px;
+  letter-spacing: -0.5px;
 }
 
 .paragraphText {
   font-family: var(--font-poppins), sans-serif;
-  font-size: 20px;
+  font-size: 16px;
   color: rgba(255, 255, 255, 0.6);
-  line-height: 1.8;
-  letter-spacing: 0.5px;
+  line-height: 1.7;
+  letter-spacing: 0.2px;
   font-weight: 400;
 }

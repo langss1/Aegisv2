@@ -33,13 +33,18 @@ export default function DemoSection() {
             opacity: Math.min(scale * 1.5 - 0.5, 1)
         }}
       >
-        <iframe
-          className={styles.iframe}
-          src="https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1&mute=1&controls=0&loop=1&playlist=dQw4w9WgXcQ"
-          title="Aegis Intro"
-          allow="autoplay; encrypted-media"
-          allowFullScreen
-        />
+        <div className={styles.videoContent}>
+          <iframe 
+            width="100%" 
+            height="100%" 
+            src="https://www.youtube.com/embed/dQw4w9QwXcQ?autoplay=1&mute=1&controls=0&loop=1&playlist=dQw4w9QwXcQ" 
+            title="Aegis Demo" 
+            frameBorder="0" 
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+            allowFullScreen
+            style={{ borderRadius: '12px', boxShadow: '0 20px 50px rgba(255, 0, 0, 0.3)' }}
+          ></iframe>
+        </div>
       </div>
     </section>
   )

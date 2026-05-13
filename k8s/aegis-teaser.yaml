@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aegis-teaser
+  namespace: coffe-break
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: aegis-teaser
+  template:
+    metadata:
+      labels:
+        app: aegis-teaser
+    spec:
+      containers:
+      - name: aegis-teaser
+        image: <DOCKER_USERNAME>/aegis-teaser:latest # Change to your docker image
+        ports:
+        - containerPort: 3000
+        env:
+        - name: NODE_ENV
+          value: "production"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: aegis-teaser-service
+  namespace: coffe-break
+spec:
+  selector:
+    app: aegis-teaser
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 3000
+  type: ClusterIP
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: aegis-teaser-ingress
+  namespace: coffe-break
+  annotations:
+    kubernetes.io/ingress.class: nginx
+spec:
+  rules:
+  - host: coffe-break.hackathon.sev-2.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: aegis-teaser-service
+            port:
+              number: 80

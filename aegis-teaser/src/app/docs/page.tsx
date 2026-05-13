@@ -1,79 +1,154 @@
 'use client'
-import Link from 'next/link'
-import styles from './docs.module.css'
+import { motion } from 'framer-motion'
+import Navbar from '@/components/Navbar'
+import Footer from '@/components/Footer'
+import styles from './Docs.module.css'
+import { useState } from 'react'
+
+const sections = [
+  {
+    id: "help-system",
+    title: "The Help System",
+    cmd: "aegis help",
+    content: (
+      <>
+        <p>The help command is the entry point for understanding the Aegis ecosystem. It provides a real-time overview of available autonomous security operations, shell integrations, and AI configurations.</p>
+        <div className={styles.terminalBox}>
+          <pre>
+{`bantuan_sistem
+perintah utama:
+  scan        jalankan pemetaan struktur & arsitektur proyek
+  code        jalankan audit kode (SAST) & perbaikan AI
+  ...`}
+          </pre>
+        </div>
+      </>
+    )
+  },
+  {
+    id: "scan",
+    title: "Architecture Scan",
+    cmd: "aegis scan",
+    content: (
+      <>
+        <p>The scan command initiates Phase 0 of the Aegis pipeline. It performs a deep recursive traversal of the project directory to build a semantic map of the application.</p>
+        <ul>
+          <li><strong>Dependency Analysis:</strong> Parses <code>package.json</code> and manifest files.</li>
+          <li><strong>Architecture Report:</strong> Generates <code>AEGIS_INGESTION_REPORT.md</code>.</li>
+        </ul>
+      </>
+    )
+  },
+  {
+    id: "code",
+    title: "Security Audit (SAST)",
+    cmd: "aegis code",
+    content: (
+      <>
+        <p>This command executes Phase 1: searching for vulnerabilities in the source code and offering surgical AI repairs.</p>
+        <ul>
+          <li><strong>Vulnerability Probing:</strong> Scans for hardcoded secrets and SQL injection.</li>
+          <li><strong>Interactive Patching:</strong> Presents discovered issues with "Before & After" diffs.</li>
+        </ul>
+      </>
+    )
+  },
+  {
+    id: "monitor",
+    title: "Runtime Monitor",
+    cmd: "aegis monitor",
+    content: (
+      <>
+        <p>[COMING SOON] The monitor command will handle Phase 2 and 3 of the security lifecycle, analyzing the application in its running state.</p>
+      </>
+    )
+  },
+  {
+    id: "undo",
+    title: "State Recovery",
+    cmd: "aegis undo",
+    content: (
+      <>
+        <p>The undo command provides a failsafe mechanism, restoring the project to its original, pre-remediation state using <code>.bak</code> files.</p>
+      </>
+    )
+  },
+  {
+    id: "models",
+    title: "Intelligence Cores",
+    cmd: "aegis models",
+    content: (
+      <>
+        <p>Switch between different AI "brains" (Aegis Core, Ollama, Custom) depending on your privacy and performance needs.</p>
+      </>
+    )
+  },
+  {
+    id: "tanya",
+    title: "AI Assistant",
+    cmd: "aegis tanya <text>",
+    content: (
+      <>
+        <p>The tanya command allows you to communicate directly with the active AI core about project-specific security questions.</p>
+      </>
+    )
+  }
+]
 
 export default function DocsPage() {
+  const [activeTab, setActiveTab] = useState("help-system")
+
   return (
-    <div className={styles.container}>
-      <aside className={styles.sidebar}>
-        <div className={styles.logo}>
-          <Link href="/">AEGIS Docs</Link>
+    <main className={styles.page}>
+      <Navbar />
+      
+      <div className={styles.container}>
+        <aside className={styles.sidebar}>
+          <div className={styles.sidebarHeader}>
+            <span className={styles.vTag}>v2.3.0</span>
+            <h3>CLI Guide</h3>
+          </div>
+          <nav className={styles.nav}>
+            {sections.map((s) => (
+              <button 
+                key={s.id}
+                className={`${styles.navLink} ${activeTab === s.id ? styles.active : ''}`}
+                onClick={() => {
+                  setActiveTab(s.id)
+                  document.getElementById(s.id)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                }}
+              >
+                {s.title}
+              </button>
+            ))}
+          </nav>
+        </aside>
+
+        <div className={styles.content}>
+          <div className={styles.headerArea}>
+            <h1 className={styles.mainTitle}>Aegis CLI <span className={styles.red}>Documentation</span></h1>
+            <p className={styles.mainDesc}>The comprehensive technical guide for the Aegis Autonomous Security Engine.</p>
+          </div>
+
+          {sections.map((s) => (
+            <motion.section 
+              key={s.id} 
+              id={s.id}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-20% 0px -20% 0px" }}
+              onViewportEnter={() => setActiveTab(s.id)}
+              className={styles.section}
+            >
+              <h2 className={styles.sectionTitle}>{s.title}</h2>
+              <div className={styles.commandTag}>{s.cmd}</div>
+              <div className={styles.sectionBody}>{s.content}</div>
+            </motion.section>
+          ))}
         </div>
-        <nav className={styles.nav}>
-          <div className={styles.navGroup}>
-            <h4>Getting Started</h4>
-            <a href="#introduction">Introduction</a>
-            <a href="#cli-setup">CLI Setup</a>
-            <a href="#web-integration">Web Integration</a>
-          </div>
-          <div className={styles.navGroup}>
-            <h4>Features</h4>
-            <a href="#phase1">Phase 1: SAST</a>
-            <a href="#phase2">Phase 2: DAST</a>
-            <a href="#phase3">Phase 3: Monitoring</a>
-          </div>
-        </nav>
-      </aside>
+      </div>
 
-      <main className={styles.main}>
-        <header className={styles.header}>
-          <Link href="/login" className={styles.backBtn}>← Back to Login</Link>
-        </header>
-
-        <section id="introduction" className={styles.section}>
-          <h1>Introduction</h1>
-          <p>AEGIS is an autonomous AI-powered security platform designed to secure your development era. It provides both a cloud-based dashboard and a local CLI agent for maximum privacy.</p>
-        </section>
-
-        <section id="cli-setup" className={styles.section}>
-          <h1>CLI Setup</h1>
-          <p>For developers who prioritize data privacy, the AEGIS CLI runs all security processes locally on your machine.</p>
-          <div className={styles.codeBlock}>
-            <code>npx aegis-security@latest init</code>
-          </div>
-          <p>This command will initialize the AEGIS core engine and guide you through the setup process for your local IDE (VS Code, IntelliJ, etc).</p>
-        </section>
-
-        <section id="web-integration" className={styles.section}>
-          <h1>Web Integration</h1>
-          <p>The Web Dashboard allows you to manage security across your entire team. Simply connect your GitHub repository or provide a public URL to start automated monitoring.</p>
-          <div className={styles.stepBox}>
-            <div className={styles.step}>
-              <span>1</span>
-              <div>
-                <strong>Connect Repository</strong>
-                <p>Authorize AEGIS to access your code via GitHub OAuth.</p>
-              </div>
-            </div>
-            <div className={styles.step}>
-              <span>2</span>
-              <div>
-                <strong>Automated Scanning</strong>
-                <p>AEGIS will automatically detect vulnerabilities and suggest AI patches.</p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section id="phase1" className={styles.section}>
-          <h1>Phase 1: Static Analysis (SAST)</h1>
-          <p>AEGIS scans your source code for common security patterns, exposed secrets, and logic flaws. It provides instant AI-generated patches that you can apply with one click.</p>
-        </section>
-
-        <footer className={styles.footer}>
-          <p>© 2026 AEGIS Security Platform. Built for the modern developer.</p>
-        </footer>
-      </main>
-    </div>
+      <Footer />
+    </main>
   )
 }

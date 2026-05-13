@@ -1,4 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { generateAutoFix } from '@/lib/deepseek'
+import fs from 'fs/promises'
+import path from 'path'
 
 interface Vulnerability {
   id: string
@@ -391,7 +394,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'vulnerability is required' }, { status: 400 })
       }
 
-      const fix = generateFix(vulnerability)
+      const fix = await generateFix(vulnerability)
       return NextResponse.json({ success: true, fix })
     }
 
@@ -401,9 +404,192 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'vulnerabilities array is required' }, { status: 400 })
       }
 
-      const fixes = vulnerabilities.map((vuln: Vulnerability) => generateFix(vuln))
+      const fixes = await Promise.all(
+        vulnerabilities.map((vuln: Vulnerability) => generateFix(vuln))
+      )
 
       return NextResponse.json({ success: true, fixes })
+    }
+
+    if (action === 'batch-apply') {
+      const { file, fixes, repoUrl, isLocal } = body
+      const apiKey = process.env.DEEPSEEK_API_KEY
+
+      try {
+        let content = ''
+        let sha = ''
+        let owner = '', repoName = ''
+        const isGitHub = repoUrl && repoUrl.includes('github.com') && !isLocal
+
+        // 1. Get initial content (with cache busting)
+        if (isGitHub) {
+          const match = repoUrl.match(/github\.com\/([^\/]+)\/([^\/]+)/)
+          if (!match) throw new Error('Invalid GitHub URL')
+          owner = match[1]
+          repoName = match[2].replace(/\.git$/, '')
+          const token = process.env.GITHUB_TOKEN
+          const headers = { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github.v3+json' }
+          
+          // Force fresh content with timestamp
+          const fileRes = await fetch(`https://api.github.com/repos/${owner}/${repoName}/contents/${file}?t=${Date.now()}`, { headers })
+          if (!fileRes.ok) throw new Error(`Could not find ${file} on GitHub`)
+          const fileData = await fileRes.json()
+          content = Buffer.from(fileData.content, 'base64').toString('utf-8')
+          sha = fileData.sha
+        } else {
+          const filePath = path.isAbsolute(file) ? file : path.join(process.cwd(), '..', file)
+          content = await fs.readFile(filePath, 'utf8')
+        }
+
+        let newContent = ''
+
+        // 2. Perform Surgical Deep Healing (Surgical Line Replacement)
+        // We use reverse-order patching to avoid line number shifting issues
+        const lines = content.split('\n')
+        
+        // Sort fixes by line number descending (bottom to top)
+        const sortedFixes = [...fixes].sort((a: any, b: any) => b.line - a.line)
+        
+        let appliedCount = 0
+        for (const f of sortedFixes) {
+          const lineIdx = f.line - 1
+          if (lineIdx >= 0 && lineIdx < lines.length) {
+            const currentLine = lines[lineIdx].trim()
+            // Verify if the code hasn't changed to prevent wrong injection
+            // If currentCode is provided, check it. Otherwise, proceed.
+            if (!f.currentCode || currentLine === f.currentCode.trim() || currentLine.includes(f.currentCode.trim())) {
+              lines[lineIdx] = f.fixedCode
+              appliedCount++
+            }
+          }
+        }
+        
+        newContent = lines.join('\n')
+
+        // 3. Save / Commit
+        if (isGitHub) {
+          const token = process.env.GITHUB_TOKEN
+          const commitRes = await fetch(`https://api.github.com/repos/${owner}/${repoName}/contents/${file}`, {
+            method: 'PUT',
+            headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/vnd.github.v3+json' },
+            body: JSON.stringify({
+              message: `🛡️ AEGIS: Deep-Healing auto-remediation for ${appliedCount} issues`,
+              content: Buffer.from(newContent).toString('base64'),
+              sha: sha
+            })
+          })
+          if (!commitRes.ok) throw new Error('GitHub Batch Commit Failed')
+          return NextResponse.json({ success: true, message: `Deep-Healed ${appliedCount} issues in ${file} on GitHub` })
+        } else {
+          const filePath = path.isAbsolute(file) ? file : path.join(process.cwd(), '..', file)
+          
+          // Create backup like CLI does
+          try {
+            const backupPath = filePath + '.bak'
+            if (!(await fs.access(backupPath).then(() => true).catch(() => false))) {
+              await fs.writeFile(backupPath, content)
+            }
+          } catch (e) {}
+
+          await fs.writeFile(filePath, newContent)
+          return NextResponse.json({ success: true, message: `Deep-Healed ${appliedCount} issues in ${file} locally` })
+        }
+      } catch (err: any) {
+        return NextResponse.json({ error: err.message }, { status: 500 })
+      }
+    }
+
+    if (action === 'apply-fix') {
+      const { file, fixedCode, vulnerability, repoUrl, isLocal } = body
+      if (!file || !fixedCode || !vulnerability) {
+        return NextResponse.json({ error: 'file, fixedCode, and vulnerability details are required' }, { status: 400 })
+      }
+
+      // 1. GitHub Fix (If repoUrl is present and not local)
+      if (repoUrl && repoUrl.includes('github.com') && !isLocal) {
+        try {
+          const match = repoUrl.match(/github\.com\/([^\/]+)\/([^\/]+)/)
+          if (!match) throw new Error('Invalid GitHub URL')
+          const [, owner, repo] = match
+          const repoName = repo.replace(/\.git$/, '')
+
+          // Get token from env or request
+          const token = process.env.GITHUB_TOKEN
+          if (!token || token === 'your_github_pat_here') {
+            throw new Error('GitHub token missing in .env. Cannot push fixes to GitHub.')
+          }
+
+          const headers = {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/vnd.github.v3+json'
+          }
+
+          // A. Get current file SHA and content
+          const fileRes = await fetch(`https://api.github.com/repos/${owner}/${repoName}/contents/${file}`, { headers })
+          if (!fileRes.ok) throw new Error(`Could not find ${file} on GitHub`)
+          const fileData = await fileRes.json()
+          const currentContent = Buffer.from(fileData.content, 'base64').toString('utf-8')
+          
+          // B. Apply patch to line
+          const lines = currentContent.split('\n')
+          const lineIdx = vulnerability.line - 1
+          if (lineIdx < 0 || lineIdx >= lines.length) throw new Error(`Line ${vulnerability.line} mismatch on GitHub`)
+          
+          lines[lineIdx] = fixedCode
+          const newContent = lines.join('\n')
+
+          // C. Commit to GitHub
+          const commitRes = await fetch(`https://api.github.com/repos/${owner}/${repoName}/contents/${file}`, {
+            method: 'PUT',
+            headers,
+            body: JSON.stringify({
+              message: `🛡️ AEGIS: Auto-remediation for ${vulnerability.type} at line ${vulnerability.line}`,
+              content: Buffer.from(newContent).toString('base64'),
+              sha: fileData.sha
+            })
+          })
+
+          if (!commitRes.ok) {
+            const err = await commitRes.json()
+            throw new Error(`GitHub Commit Failed: ${err.message}`)
+          }
+
+          return NextResponse.json({ 
+            success: true, 
+            message: `Pushed fix to GitHub: ${repoName}/${file}`,
+            github_url: repoUrl
+          })
+        } catch (err: any) {
+          console.error('GitHub Fix Error:', err)
+          return NextResponse.json({ error: `GitHub Push Failed: ${err.message}` }, { status: 500 })
+        }
+      }
+
+      // 2. Local Fix Fallback
+      const projectRoot = process.cwd()
+      try {
+        let filePath = file
+        if (!path.isAbsolute(filePath)) {
+          filePath = path.join(projectRoot, '..', file)
+        }
+
+        // Read the current file content
+        const content = await fs.readFile(filePath, 'utf8')
+        const lines = content.split('\n')
+        
+        // The line number is 1-indexed
+        const lineIdx = vulnerability.line - 1
+        
+        if (lineIdx >= 0 && lineIdx < lines.length) {
+          lines[lineIdx] = fixedCode
+          await fs.writeFile(filePath, lines.join('\n'))
+          return NextResponse.json({ success: true, message: `Applied fix to ${file} at line ${vulnerability.line}` })
+        } else {
+          return NextResponse.json({ error: `Line ${vulnerability.line} not found in ${file}` }, { status: 400 })
+        }
+      } catch (err: any) {
+        return NextResponse.json({ error: `Failed to apply fix: ${err.message}` }, { status: 500 })
+      }
     }
 
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
@@ -412,14 +598,40 @@ export async function POST(request: NextRequest) {
   }
 }
 
-function generateFix(vulnerability: Vulnerability): FixSuggestion {
+async function generateFix(vulnerability: Vulnerability): Promise<FixSuggestion> {
+  try {
+    // Try AI Fix first
+    const aiFix = await generateAutoFix({
+      type: vulnerability.type,
+      severity: vulnerability.severity,
+      file: vulnerability.file,
+      line: vulnerability.line,
+      code: vulnerability.code,
+      description: vulnerability.description
+    });
+
+    if (aiFix && aiFix.fixedCode && aiFix.confidence > 0.4) {
+      return {
+        id: `fix_ai_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        vulnerabilityId: vulnerability.id,
+        originalCode: vulnerability.code,
+        fixedCode: aiFix.fixedCode,
+        explanation: aiFix.explanation,
+        confidence: aiFix.confidence
+      }
+    }
+  } catch (error) {
+    console.error('AI Fix Generation failed, falling back to templates:', error);
+  }
+
+  // Fallback to Template
   const vulnType = normalizeVulnType(vulnerability.type)
   const template = fixTemplates[vulnType]
 
   if (template) {
     const { fixed, explanation } = template(vulnerability.code)
     return {
-      id: `fix_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      id: `fix_tmpl_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       vulnerabilityId: vulnerability.id,
       originalCode: vulnerability.code,
       fixedCode: fixed,
@@ -430,7 +642,7 @@ function generateFix(vulnerability: Vulnerability): FixSuggestion {
 
   // Generic fix suggestion
   return {
-    id: `fix_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    id: `fix_gen_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
     vulnerabilityId: vulnerability.id,
     originalCode: vulnerability.code,
     fixedCode: `// TODO: Review and fix ${vulnerability.type} vulnerability\n// ${vulnerability.description}\n${vulnerability.code}`,

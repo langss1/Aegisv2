@@ -32,7 +32,7 @@ export default function IconRibbonSection() {
   // Horizontal movement using smoothed progress - very short distance for slow movement
   const xTranslate = useTransform(smoothProgress, [0, 1], [0, -400])
 
-  const fullText = "Aegis is the autonomous security agent platform, designed to analyze, defend, and heal your infrastructure in the agent-first era. We empower developers with advanced AI agents that identify vulnerabilities, mitigate risks, and ensure a robust security posture across your entire tech stack."
+  const fullText = "Aegis is an autonomous ecosystem of security and QA testing agents, built for the relentless demands of modern software engineering. We provide developers with intelligent agents that not only detect and heal vulnerabilities but also automate complex QA testing cycles, ensuring your code is both secure and production-ready at all times."
 
   return (
     <section ref={sectionRef} className={styles.section}>
@@ -49,7 +49,7 @@ export default function IconRibbonSection() {
               <div 
                 key={i} 
                 className={styles.iconCircle}
-                style={{ transform: `translateY(${yOffset}px)` }}
+                style={{ transform: `translateY(${yOffset.toFixed(4)}px)` }}
               >
                 <Icon size={24} strokeWidth={1.5} color="rgba(255, 0, 0, 0.8)" />
               </div>
@@ -66,7 +66,7 @@ export default function IconRibbonSection() {
           transition={{ duration: 2.0, ease: [0.22, 1, 0.36, 1] }}
           viewport={{ once: true }}
         >
-          What is Aegis
+          What is Aegis?
         </motion.h2>
         <motion.p 
           className={styles.paragraphText}

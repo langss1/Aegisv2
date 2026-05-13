@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 const readline = require('readline');
-const { execSync } = require('child_process');
+const { execSync, spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
@@ -31,7 +31,7 @@ const sessionPath = path.join(os.homedir(), '.aegis.session.json');
 let session = null;
 if (fs.existsSync(sessionPath)) {
   try {
-    session = JSON.parse(fs.readFileSync(sessionPath, 'utf8'));
+    session = readJsonFile(sessionPath);
     // check expiry
     if (session.expires_at < Date.now()) {
       session = null;
@@ -39,8 +39,8 @@ if (fs.existsSync(sessionPath)) {
   } catch (e) {}
 }
 
-const SUPABASE_URL = "https://zmjrsztlixsbluvbuncw.supabase.co";
-const SUPABASE_KEY = "sb_publishable_HCNKDkpAmx6xHkpdcOTI6A_90zUZFNB";
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_KEY;
 
 function stripANSI(str) {
   return str.replace(/\x1b\[[0-9;]*m/g, '');
@@ -52,8 +52,14 @@ function pad(str, length) {
   return str + ' '.repeat(Math.max(0, needed));
 }
 
+function readJsonFile(filePath) {
+  return JSON.parse(fs.readFileSync(filePath, 'utf8').replace(/^\uFEFF/, ''));
+}
+
 let activeModel = config.activeModel;
 let sessionMode = 'cli'; // 'cli' or 'chat'
+const startupArgs = process.argv.slice(2);
+const isInteractiveTerminal = Boolean(process.stdin.isTTY && process.stdout.isTTY);
 
 function saveConfig() {
   const configPath = path.join(process.cwd(), '.aegis.config.json');
@@ -118,8 +124,8 @@ async function handleLogin() {
               <div class="container">
                 <div class="logo">
                   <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2">
-                    <path d="M12 2L3 7v10l9 5 9-5V7L12 2z"/>
-                    <path d="M12 22V12M12 12l9-5M12 12L3 7" stroke="white" stroke-opacity="0.3"/>
+                                        <path d=process.env.D/>
+                                        <path d=process.env.D stroke="white" stroke-opacity="0.3"/>
                   </svg>
                 </div>
                 <h1>Signed in to Aegis</h1>
@@ -159,22 +165,18 @@ function handleLogout() {
   console.log(`${colors.red}Terminating Aegis secure session...${colors.reset}\n`);
   process.exit(0);
 }
-function openUrl(url) {
-  const platform = process.platform;
-  const start = platform === 'win32' ? 'start' : platform === 'darwin' ? 'open' : 'xdg-open';
-  try {
-    execSync(`${start} "${url}"`);
-  } catch (e) {}
-}
-
 async function askAI(prompt) {
   process.stdout.write(`\n${colors.cyan}› aegis sedang berpikir...${colors.reset}\r`);
   try {
     let response;
     if (activeModel === 'aegis') {
+      const aegisKey = process.env.AEGIS_DEEPSEEK_API_KEY || process.env.DEEPSEEK_API_KEY || process.env.AEGIS_API_KEY;
+      if (!aegisKey) {
+        return "error: aegis core membutuhkan AEGIS_DEEPSEEK_API_KEY atau DEEPSEEK_API_KEY. Gunakan 'ollama' untuk mode lokal atau 'custom' untuk API key pribadi.";
+      }
       response = await fetch('https://api.deepseek.com/v1/chat/completions', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer sk-fcc206047ecc4f97bc5d5d97e81054cc` },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${aegisKey}` },
         body: JSON.stringify({
           model: 'deepseek-coder',
           messages: [{ role: 'user', content: prompt }],
@@ -228,66 +230,313 @@ async function askAI(prompt) {
   }
 }
 
-async function runScan(phaseName, targetDir) {
-  console.log(`\n${colors.yellow}› menginisialisasi ${phaseName}...${colors.reset}`);
-  console.log(`${colors.gray}target: ${colors.white}${targetDir}${colors.reset}\n`);
-  
-  let detectedStack = ['Generic'];
-  let fileCount = 0;
-  
-  // Real Local Analysis for P0
-  if (phaseName === "P0: INGESTION") {
-    try {
-      if (fs.existsSync(path.join(targetDir, 'package.json'))) {
-        const pkg = JSON.parse(fs.readFileSync(path.join(targetDir, 'package.json'), 'utf8'));
-        const deps = { ...pkg.dependencies, ...pkg.devDependencies };
-        detectedStack = [];
-        if (deps.next) detectedStack.push('Next.js');
-        if (deps.react) detectedStack.push('React');
-        if (deps.typescript) detectedStack.push('TypeScript');
-        if (deps.tailwindcss) detectedStack.push('TailwindCSS');
-        if (deps.prisma) detectedStack.push('Prisma');
-        if (deps.express) detectedStack.push('Express');
-        if (detectedStack.length === 0) detectedStack.push('Node.js');
-      }
+let projectMetadata = null;
 
+// -------------------------------------------------------------------------
+// PHASE 0: INGESTION (REMASTERED)
+// -------------------------------------------------------------------------
+async function runPhase0(targetDir) {
+  console.log(`\n${colors.yellow}🚀 MENGINISIALISASI P0: INGESTION...${colors.reset}`);
+  console.log(`${colors.gray}target: ${colors.white}${targetDir}${colors.reset}\n`);
+
+  const steps = [
+    { label: "Memetakan struktur direktori & file sistem", weight: 20 },
+    { label: "Mendeteksi metadata Git & sejarah komit", weight: 15 },
+    { label: "Menganalisis tanda tangan stack & arsitektur", weight: 25 },
+    { label: "Mengidentifikasi entry point & alur bootstrap", weight: 20 },
+    { label: "Memverifikasi konfigurasi environment & secrets", weight: 20 }
+  ];
+
+  let gitInfo = { branch: 'n/a', commit: 'n/a' };
+  let detectedStack = [];
+  let fileCount = 0;
+  let envFiles = [];
+  let entryPoint = 'unknown';
+
+  for (let i = 0; i < steps.length; i++) {
+    const step = steps[i];
+    let progress = 0;
+    while (progress <= step.weight) {
+      const totalProgress = steps.slice(0, i).reduce((a, b) => a + b.weight, 0) + progress;
+      const bar = "█".repeat(Math.floor(totalProgress / 5)) + "░".repeat(20 - Math.floor(totalProgress / 5));
+      process.stdout.write(`\r${colors.red}[${bar}] ${totalProgress}% ${colors.reset}${colors.gray}${step.label}...${colors.reset}`);
+      await sleep(15);
+      progress += 2;
+    }
+
+    if (i === 0) {
       const getFiles = (dir) => {
         let count = 0;
         const files = fs.readdirSync(dir);
         for (const file of files) {
-          if (file === 'node_modules' || file === '.git' || file === '.next') continue;
+          if (['node_modules', '.git', '.next', 'dist', 'build'].includes(file)) continue;
           const name = path.join(dir, file);
-          if (fs.statSync(name).isDirectory()) {
-            count += getFiles(name);
-          } else {
-            count++;
-          }
+          if (fs.statSync(name).isDirectory()) count += getFiles(name);
+          else count++;
         }
         return count;
       };
       fileCount = getFiles(targetDir);
+    }
+    if (i === 1) {
+      try {
+        gitInfo.branch = execSync('git rev-parse --abbrev-ref HEAD', { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
+        gitInfo.commit = execSync('git rev-parse --short HEAD', { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
+      } catch (e) {}
+    }
+    if (i === 2) {
+      if (fs.existsSync(path.join(targetDir, 'package.json'))) {
+        const pkg = readJsonFile(path.join(targetDir, 'package.json'));
+        const deps = { ...pkg.dependencies, ...pkg.devDependencies };
+        if (deps.next) detectedStack.push(`Next.js@${deps.next.replace(/[\^~]/, '')}`);
+        if (deps.react) detectedStack.push(`React@${deps.react.replace(/[\^~]/, '')}`);
+        if (deps.typescript) detectedStack.push(`TypeScript@${deps.typescript.replace(/[\^~]/, '')}`);
+        if (deps.tailwindcss) detectedStack.push('TailwindCSS');
+      }
+    }
+    if (i === 4) {
+      envFiles = fs.readdirSync(targetDir).filter(f => f.startsWith('.env'));
+      if (fs.existsSync(path.join(targetDir, 'src/app'))) entryPoint = 'src/app (App Router)';
+      else if (fs.existsSync(path.join(targetDir, 'src/pages'))) entryPoint = 'src/pages (Pages Router)';
+    }
+    process.stdout.write('\n');
+  }
+
+  console.log(`\n${colors.green}✔ P0: INGESTION SELESAI.${colors.reset}\n`);
+
+  const tableWidth = 60;
+  console.log(`${colors.cyan}╔${'═'.repeat(tableWidth)}╗${colors.reset}`);
+  console.log(`${colors.cyan}║${colors.reset} ${colors.bright}${colors.white}METADATA ARSITEKTUR PROYEK${colors.reset} ${' '.repeat(31)}${colors.cyan}║${colors.reset}`);
+  console.log(`${colors.cyan}╠${'═'.repeat(tableWidth)}╣${colors.reset}`);
+  console.log(`${colors.cyan}║${colors.reset} ${colors.yellow}STACK     :${colors.reset} ${pad(detectedStack.join(', ') || 'Generic Node.js', 45)} ${colors.cyan}║${colors.reset}`);
+  console.log(`${colors.cyan}║${colors.reset} ${colors.yellow}GIT       :${colors.reset} ${pad(gitInfo.branch + ' @ ' + gitInfo.commit, 45)} ${colors.cyan}║${colors.reset}`);
+  console.log(`${colors.cyan}║${colors.reset} ${colors.yellow}FILES     :${colors.reset} ${pad(fileCount + ' file terdeteksi', 45)} ${colors.cyan}║${colors.reset}`);
+  console.log(`${colors.cyan}║${colors.reset} ${colors.yellow}ENTRY     :${colors.reset} ${pad(entryPoint, 45)} ${colors.cyan}║${colors.reset}`);
+  console.log(`${colors.cyan}║${colors.reset} ${colors.yellow}ENV       :${colors.reset} ${pad(envFiles.join(', ') || 'none', 45)} ${colors.cyan}║${colors.reset}`);
+  console.log(`${colors.cyan}╚${'═'.repeat(tableWidth)}╝${colors.reset}\n`);
+
+  projectMetadata = { detectedStack, gitInfo, fileCount, entryPoint, envFiles };
+  await generateIngestionReport(projectMetadata, targetDir);
+}
+
+async function generateIngestionReport(data, targetDir) {
+  const reportPath = path.join(targetDir, 'AEGIS_INGESTION_REPORT.md');
+  let content = `# 🏗️ AEGIS INGESTION & ARCHITECTURE REPORT\n\n`;
+  content += `**Timestamp:** ${new Date().toLocaleString()}\n`;
+  content += `**Project Path:** \`${targetDir}\`\n\n`;
+  content += `## 🛠️ Technology Stack\n- **Framework/Libraries:** ${data.detectedStack.join(', ') || 'Generic Node.js'}\n- **Entry Point:** ${data.entryPoint}\n\n`;
+  content += `## 🌳 Git Metadata\n- **Current Branch:** \`${data.gitInfo.branch}\`\n- **Last Commit:** \`${data.gitInfo.commit}\`\n\n`;
+  content += `## 📊 Project Scope\n- **Total Analyzed Files:** ${data.fileCount}\n- **Environment Files Found:** ${data.envFiles.join(', ') || 'None'}\n\n`;
+  content += `\n*Aegis Ingestion Phase completed successfully. System ready for SAST/DAST.* \n`;
+  content += `\n--- \n*Report generated by Aegis Autonomous Security Engine*\n`;
+  
+  fs.writeFileSync(reportPath, content);
+  console.log(`${colors.cyan}📄 Ingestion Report dibuat: ${colors.white}AEGIS_INGESTION_REPORT.md${colors.reset}\n`);
+}
+
+// -------------------------------------------------------------------------
+// PHASE 1: SAST & HEAL (ELITE)
+// -------------------------------------------------------------------------
+async function runPhase1(targetDir) {
+  if (!projectMetadata) {
+    console.log(`${colors.magenta}ℹ Proyek belum di-ingest. Menjalankan quick-scan arsitektur...${colors.reset}`);
+    const pkgPath = path.join(targetDir, 'package.json');
+    const hasNext = fs.existsSync(path.join(targetDir, '.next')) || (fs.existsSync(pkgPath) && fs.readFileSync(pkgPath, 'utf8').includes('next'));
+    projectMetadata = { detectedStack: hasNext ? ['Next.js'] : ['Generic'], entryPoint: 'Root' };
+  }
+
+  console.log(`\n${colors.yellow}🔍 MENGINISIALISASI P1: SAST & HEAL...${colors.reset}`);
+  console.log(`${colors.gray}target: ${colors.white}${targetDir}${colors.reset}`);
+  console.log(`${colors.gray}context: ${colors.cyan}${projectMetadata.detectedStack.join(', ')} project detected.${colors.reset}\n`);
+
+  const findings = [];
+  const ignoreDirs = ['node_modules', '.git', '.next', 'dist', 'build', '.gemini', 'artifacts'];
+  const ignoreFiles = ['aegis.js', 'package-lock.json', 'yarn.lock'];
+
+  function scan(dir) {
+    try {
+      const files = fs.readdirSync(dir);
+      for (const file of files) {
+        if (ignoreDirs.includes(file) || ignoreFiles.includes(file)) continue;
+        const fullPath = path.join(dir, file);
+        const stat = fs.statSync(fullPath);
+        if (stat.isDirectory()) scan(fullPath);
+        else {
+          const ext = path.extname(file);
+          if (['.js', '.ts', '.tsx', '.py', '.env'].includes(ext)) {
+            const content = fs.readFileSync(fullPath, 'utf8');
+            const lines = content.split('\n');
+            lines.forEach((line, i) => {
+              const trimLine = line.trim();
+              if (trimLine.length < 5) return;
+              const secretMatch = line.match(/(const|let|var|)\s*(\w+)\s*[:=]\s*['"]([^'"]+)['"]/i);
+              if (secretMatch && !line.includes('process.env')) {
+                const varName = secretMatch[2];
+                const val = secretMatch[3];
+                const isLikelySecret = /(password|secret|key|token|auth|sb_|sk_|AKIA)/i.test(varName) || val.length > 25;
+                const isUISafe = /(label|title|description|text|className|id|type|placeholder|name|variant|size|color|style|background|padding|margin|font)/i.test(varName);
+                if (isLikelySecret && !isUISafe && val.length > 8 && !val.includes(';')) {
+                  findings.push({ 
+                    file: path.relative(targetDir, fullPath), 
+                    line: i + 1, 
+                    issue: 'Hardcoded Sensitive Data', 
+                    severity: 'Critical', 
+                    currentCode: trimLine, 
+                    fixedCode: line.replace(/['"][^'"]+['"]/, `process.env.${varName.toUpperCase()}`), 
+                    description: `Ditemukan kredensial '${varName}' yang tersimpan secara eksplisit.` 
+                  });
+                }
+              }
+              if (/(query|select|update|delete).*\$\{.*\}|f['"].*\{.*\}['"]/i.test(line)) {
+                findings.push({ 
+                  file: path.relative(targetDir, fullPath), 
+                  line: i + 1, 
+                  issue: 'SQL Injection Vulnerability', 
+                  severity: 'High', 
+                  currentCode: trimLine, 
+                  fixedCode: "GENERATE_VIA_AI", 
+                  description: 'Input dinamis dimasukkan langsung ke query database.' 
+                });
+              }
+            });
+          }
+        }
+      }
     } catch (e) {}
   }
 
+  process.stdout.write(`${colors.cyan}› Memindai kerentanan SAST...${colors.reset}\r`);
+  scan(targetDir);
+  process.stdout.write(' '.repeat(60) + '\r');
+
+  if (findings.length === 0) {
+    console.log(`${colors.green}✔ Kode aman. Tidak ada kerentanan kritis.${colors.reset}\n`);
+    return;
+  }
+
+  console.log(`${colors.red}⚠ Ditemukan ${findings.length} kerentanan keamanan!${colors.reset}\n`);
+
+  console.log(`${colors.cyan}╔${'═'.repeat(78)}╗${colors.reset}`);
+  console.log(`${colors.cyan}║${colors.reset} ${colors.bright}${colors.white}AEGIS SECURITY AUDIT REPORT${colors.reset} ${' '.repeat(49)}${colors.cyan}║${colors.reset}`);
+  console.log(`${colors.cyan}╠${'═'.repeat(78)}╣${colors.reset}`);
+
+  findings.forEach((f, idx) => {
+    const issueName = f.issue || 'Unknown Issue';
+    console.log(`${colors.cyan}║${colors.reset} ${colors.yellow}[${idx + 1}] NAMA ISU   :${colors.reset} ${colors.white}${issueName}${colors.reset}${' '.repeat(Math.max(0, 61 - issueName.length))}${colors.cyan}║${colors.reset}`);
+    console.log(`${colors.cyan}║${colors.reset}     LOKASI     :${colors.reset} ${f.file}:${f.line}${' '.repeat(Math.max(0, 61 - (f.file.length + f.line.toString().length + 1)))}${colors.cyan}║${colors.reset}`);
+    console.log(`${colors.cyan}║${colors.reset}     DESKRIPSI  :${colors.reset} ${f.description.substring(0, 60)}${' '.repeat(Math.max(0, 60 - f.description.substring(0, 60).length))}${colors.cyan}║${colors.reset}`);
+    console.log(`${colors.cyan}║${colors.reset}     ${colors.red}CODE LAMA  :${colors.reset} ${colors.gray}${f.currentCode.substring(0, 60)}${' '.repeat(Math.max(0, 60 - Math.min(60, f.currentCode.length)))}${colors.cyan}║${colors.reset}`);
+    console.log(`${colors.cyan}║${colors.reset}     ${colors.green}PATCH BARU :${colors.reset} ${colors.white}${f.fixedCode.substring(0, 60)}${' '.repeat(Math.max(0, 60 - Math.min(60, f.fixedCode.length)))}${colors.cyan}║${colors.reset}`);
+    if (idx < findings.length - 1) console.log(`${colors.cyan}╟${'─'.repeat(78)}╢${colors.reset}`);
+  });
+  console.log(`${colors.cyan}╚${'═'.repeat(78)}╝${colors.reset}\n`);
+
+  if (!isInteractiveTerminal) {
+    console.log(`${colors.yellow}Non-interactive mode: patch prompt dilewati. Jalankan 'aegis code' di terminal interaktif untuk menerapkan perbaikan.${colors.reset}\n`);
+    return;
+  }
+
+  let autoHealAll = false;
+  if (findings.length > 1) {
+    const healAllAns = await new Promise(res => rl.question(`${colors.cyan}🚀 Jalankan "HEAL ALL" untuk memperbaiki SEMUA secara otomatis? (y/n): ${colors.reset}`, res));
+    autoHealAll = healAllAns.toLowerCase() === 'y';
+  }
+
+  const healedFindings = [];
+  for (const f of findings) {
+    let apply = autoHealAll;
+    if (!autoHealAll) {
+      const ans = await new Promise(res => rl.question(`${colors.yellow}› Apply patch [${f.file}:${f.line}]? (y/n): ${colors.reset}`, res));
+      apply = ans.toLowerCase() === 'y';
+    }
+    if (apply) {
+      try {
+        const fullPath = path.join(targetDir, f.file);
+        const originalContent = fs.readFileSync(fullPath, 'utf8');
+        const lines = originalContent.split('\n');
+        if (lines[f.line - 1].trim() === f.currentCode) {
+          if (!fs.existsSync(fullPath + '.bak')) {
+            fs.writeFileSync(fullPath + '.bak', originalContent);
+          }
+          lines[f.line - 1] = lines[f.line - 1].replace(f.currentCode, f.fixedCode);
+          fs.writeFileSync(fullPath, lines.join('\n'));
+          healedFindings.push(f);
+          console.log(`${colors.green}✔ [HEALED]${colors.reset} ${f.file}:${f.line} -> ${f.issue}`);
+          console.log(`    ${colors.red}[OLD]${colors.reset} ${f.currentCode}\n    ${colors.green}[NEW]${colors.reset} ${f.fixedCode}\n`);
+        }
+      } catch (e) {}
+    }
+  }
+
+  if (healedFindings.length > 0) {
+    await generateReport(healedFindings, targetDir);
+  }
+  console.log(`${colors.green}✔ P1: SAST & HEAL Selesai.${colors.reset}\n`);
+}
+
+async function generateReport(findings, targetDir) {
+  const reportPath = path.join(targetDir, 'AEGIS_REPORT.md');
+  const isNew = !fs.existsSync(reportPath);
+  
+  let content = "";
+  if (!isNew) content += `\n\n---\n\n`;
+  else content += `# 🛡️ AEGIS SECURITY AUDIT LOG\n\n`;
+
+  content += `## 🕒 Audit Session: ${new Date().toLocaleString()}\n`;
+  if (projectMetadata) {
+    content += `- **Context:** ${projectMetadata.detectedStack.join(', ')} project detected.\n`;
+    content += `- **Entry Point:** ${projectMetadata.entryPoint}\n`;
+  }
+  content += `- **Target:** \`${targetDir}\`\n`;
+  content += `- **Summary:** ${findings.length} vulnerabilities remediated.\n\n`;
+
+  content += `### 🔍 Remediation Detail\n\n`;
+  findings.forEach((f, i) => {
+    content += `#### [${i + 1}] ${f.issue}\n`;
+    content += `- **Location:** \`${f.file}:${f.line}\`\n`;
+    content += `\n**Code Transformation:**\n\`\`\`diff\n- ${f.currentCode}\n+ ${f.fixedCode}\n\`\`\`\n\n`;
+  });
+
+  fs.appendFileSync(reportPath, content);
+  console.log(`${colors.cyan}📄 Audit Log diperbarui: ${colors.white}AEGIS_REPORT.md${colors.reset}`);
+}
+
+async function runUndo(targetDir) {
+  console.log(`\n${colors.yellow}↩ MENGINISIALISASI UNDO: REVERTING PATCHES...${colors.reset}\n`);
+  let revertedCount = 0;
+
+  function findAndRestore(dir) {
+    const items = fs.readdirSync(dir);
+    for (const item of items) {
+      const fullPath = path.join(dir, item);
+      if (fs.statSync(fullPath).isDirectory()) {
+        if (!['node_modules', '.git', '.next'].includes(item)) findAndRestore(fullPath);
+      } else if (item.endsWith('.bak')) {
+        const originalFile = fullPath.replace('.bak', '');
+        fs.copyFileSync(fullPath, originalFile);
+        fs.unlinkSync(fullPath);
+        console.log(`${colors.green}✔ Restored:${colors.reset} ${path.relative(targetDir, originalFile)}`);
+        revertedCount++;
+      }
+    }
+  }
+
+  findAndRestore(targetDir);
+  if (revertedCount > 0) {
+    console.log(`\n${colors.green}✔ SUKSES: ${revertedCount} file berhasil dikembalikan ke kondisi asli.${colors.reset}\n`);
+  } else {
+    console.log(`${colors.yellow}ℹ Tidak ada file backup (.bak) yang ditemukan.${colors.reset}\n`);
+  }
+}
+
+async function runScan(phaseName, targetDir) {
+  if (phaseName.includes("P0")) return await runPhase0(targetDir);
+  if (phaseName.includes("P1")) return await runPhase1(targetDir);
+  
+  console.log(`\n${colors.yellow}› menginisialisasi ${phaseName}...${colors.reset}`);
+  console.log(`${colors.gray}target: ${colors.white}${targetDir}${colors.reset}\n`);
+
   const logData = {
-    "P0: INGESTION": [
-      "pemetaan struktur direktori lokal...",
-      `ditemukan ${fileCount} file dalam target direktori.`,
-      "menganalisis tanda tangan arsitektur...",
-      `tech stack terdeteksi: ${detectedStack.join(', ')}`,
-      "memverifikasi dependensi keamanan...",
-      "validasi kredensial pipeline lokal...",
-      "p0: ingestion berhasil diselesaikan."
-    ],
-    "P1: SAST & HEAL": [
-      "menganalisis struktur kode & direktori...",
-      "memindai kerentanan SQL injection...",
-      "mendeteksi pola XSS pada komponen frontend...",
-      "menemukan potensi kerentanan logika bisnis...",
-      "menjalankan AI Remediation: aegis-heal v2.0...",
-      "menerapkan simulasi patch pada source code...",
-      "verifikasi integritas kode setelah patch."
-    ],
     "P2: DAST": [
       "meluncurkan environment audit terisolasi...",
       "melakukan fuzzing pada endpoint api...",
@@ -319,10 +568,6 @@ async function runScan(phaseName, targetDir) {
   }
 
   console.log(`\n${colors.green}✔ sukses:${colors.reset} ${phaseName} selesai.`);
-  if (phaseName === "P0: INGESTION") {
-    console.log(`${colors.gray}arsitektur terverifikasi: ${colors.white}${detectedStack.join(', ')}${colors.reset}`);
-    console.log(`${colors.gray}siap untuk p1 sast & heal.${colors.reset}\n`);
-  }
 }
 
 function completer(line) {
@@ -401,9 +646,16 @@ function clear() {
 
 function openUrl(url) {
   try {
-    const platform = process.platform;
-    const start = platform === 'win32' ? 'start' : platform === 'darwin' ? 'open' : 'xdg-open';
-    execSync(`${start} ${url}`);
+    const parsed = new URL(url);
+    if (!['http:', 'https:'].includes(parsed.protocol)) {
+      throw new Error('unsupported URL protocol');
+    }
+
+    const href = parsed.href;
+    const command = process.platform === 'win32' ? 'cmd' : process.platform === 'darwin' ? 'open' : 'xdg-open';
+    const args = process.platform === 'win32' ? ['/c', 'start', '', href] : [href];
+    const child = spawn(command, args, { detached: true, stdio: 'ignore' });
+    child.unref();
   } catch (e) {
     console.log(`${colors.red}Error: Could not launch browser.${colors.reset}`);
   }
@@ -455,10 +707,9 @@ async function bootSequence(speed = 1) {
   console.log(`${colors.gray} ╟${sep}╢${colors.reset}`);
 
   const steps = [
-    { id: 'p0 ingestion', status: '[synced]', color: colors.green },
-    { id: 'p1 sast & heal', status: '[ready]', color: colors.yellow },
-    { id: 'p2 dast', status: '[pending]', color: colors.red },
-    { id: 'p3 monitor', status: '[standby]', color: colors.gray }
+    { id: 'scan ingestion', status: '[synced]', color: colors.green },
+    { id: 'code sast & heal', status: '[ready]', color: colors.yellow },
+    { id: 'autonomous monitoring', status: '[coming soon]', color: colors.magenta }
   ];
 
   for (const s of steps) {
@@ -581,11 +832,14 @@ ${colors.yellow}ℹ aegis beroperasi dalam mode performa tinggi.${colors.reset}
 function showHelp() {
   const content = `
 ${colors.white}perintah utama:${colors.reset}
+  ${colors.red}scan${colors.reset}         jalankan pemetaan struktur & arsitektur proyek
+  ${colors.red}code${colors.reset}         jalankan audit kode (SAST) & perbaikan AI
+  ${colors.red}monitor${colors.reset}      [COMING SOON] pemantauan & audit runtime (DAST)
+  ${colors.red}undo${colors.reset}         batalkan patch yang telah diterapkan
   ${colors.red}models${colors.reset}       pilih & ganti otak ai (aegis/ollama/custom)
   ${colors.red}info${colors.reset}         cek spesifikasi komputer & kesehatan sistem
   ${colors.red}whoami${colors.reset}       cek identitas pengguna aktif
   ${colors.red}logout${colors.reset}       keluar dari sesi aegis
-  ${colors.red}scan${colors.reset}         mulai audit keamanan pada direktori saat ini
   ${colors.red}tanya${colors.reset} <teks>  ajukan pertanyaan langsung ke ai aktif
   ${colors.red}cls${colors.reset}          bersihkan layar & refresh status sistem
   ${colors.red}exit${colors.reset}         keluar dari aplikasi aegis
@@ -597,10 +851,11 @@ ${colors.white}perintah shell:${colors.reset}
 }
 
 
-async function handleCommand(input) {
+async function handleCommand(input, options = {}) {
+  const shouldPrompt = options.prompt !== false;
   let originalInput = input.trim();
   if (!originalInput) {
-    rl.prompt();
+    if (shouldPrompt) rl.prompt();
     return;
   }
 
@@ -611,7 +866,7 @@ async function handleCommand(input) {
   const reserved = [
     'help', 'models', 'scan', 'doc', 'cls', 'clear', 'exit', 'aegis', 'ollama', 'custom', 
     'ui', 'gui', 'config', 'tanya', 'ask', 'cd', 'dir', 'ls', 'git', 'npm', 'status', 'reset',
-    'p0', 'p1', 'p2', 'p3'
+    'p0', 'p1', 'p2', 'p3', 'init'
   ];
 
   // Logic for Chat Mode
@@ -623,7 +878,7 @@ async function handleCommand(input) {
       const reply = await askAI(originalInput);
       console.log(`\r${colors.green}│${colors.reset} ${colors.white}${reply}${colors.reset}\n`);
       rl.setPrompt(`${colors.gray}lokasi: ${colors.white}${process.cwd()}\n${colors.cyan}[chat] ${colors.reset}`);
-      rl.prompt();
+      if (shouldPrompt) rl.prompt();
       return;
     }
   }
@@ -646,20 +901,27 @@ async function handleCommand(input) {
       console.log(`${colors.cyan}› meluncurkan dashboard...${colors.reset}`);
       openUrl(`http://localhost:3001?path=${encodeURIComponent(process.cwd())}`);
       break;
-    case 'p0':
-      await runScan("P0: INGESTION", process.cwd());
-      break;
-    case 'p1':
-      await runScan("P1: SAST & HEAL", process.cwd());
-      break;
-    case 'p2':
-      await runScan("P2: DAST", process.cwd());
-      break;
-    case 'p3':
-      await runScan("P3: MONITOR", process.cwd());
+    case 'init':
+      console.log(`\n${colors.cyan}✨ INITIALIZING AEGIS SECURITY ENGINE...${colors.reset}`);
+      await runPhase0(process.cwd());
+      await runPhase1(process.cwd());
+      console.log(`\n${colors.green}✔ Project initialized and scanned successfully.${colors.reset}`);
+      console.log(`${colors.gray}Type 'help' to see more commands.${colors.reset}\n`);
       break;
     case 'scan':
-      await runScan("AEGIS FULL AUDIT", process.cwd());
+      await runPhase0(process.cwd());
+      break;
+    case 'code':
+      await runPhase0(process.cwd());
+      await runPhase1(process.cwd());
+      break;
+    case 'monitor':
+    case 'monitoring':
+      console.log(`\n${colors.magenta}🕒 FEATURE COMING SOON: Phase 2 (DAST) & Phase 3 (Monitoring)${colors.reset}`);
+      console.log(`${colors.gray}Kami sedang menyempurnakan engine pengujian aktif & monitoring real-time.${colors.reset}\n`);
+      break;
+    case 'undo':
+      await runUndo(process.cwd());
       break;
     case 'help':
     case '?':
@@ -791,26 +1053,69 @@ async function handleCommand(input) {
   } else {
     rl.setPrompt(`${colors.gray}lokasi: ${colors.white}${process.cwd()}\n${colors.red}│ ${colors.reset}`);
   }
-  rl.prompt();
+  if (shouldPrompt) rl.prompt();
+}
+
+function getPackageVersion() {
+  try {
+    const pkgPath = path.join(__dirname, '..', 'package.json');
+    return readJsonFile(pkgPath).version || 'unknown';
+  } catch (e) {
+    return 'unknown';
+  }
+}
+
+function showCliUsage() {
+  console.log([
+    `aegis-security ${getPackageVersion()}`,
+    '',
+    'Usage:',
+    '  npx aegis-security@latest init',
+    '  aegis init',
+    '  aegis scan',
+    '  aegis code',
+    '',
+    'Commands:',
+    '  init      Run ingestion and SAST scan for the current project',
+    '  scan      Map project architecture and write AEGIS_INGESTION_REPORT.md',
+    '  code      Run security audit and optional remediation',
+    '  undo      Restore files from .bak backups created by Aegis',
+    '  models    Show AI backend options',
+    '  help      Show interactive command help'
+  ].join('\n'));
 }
 
 async function start() {
   // Login requirement removed as per user request for local focus
-  await bootSequence(false); // full animation on start
+  const args = startupArgs;
+
+  if (args[0] === '--version' || args[0] === '-v') {
+    console.log(getPackageVersion());
+    process.exit(0);
+  }
+
+  if (args[0] === '--help' || args[0] === '-h') {
+    showCliUsage();
+    process.exit(0);
+  }
+
+  await bootSequence(args.length > 0 ? 0.2 : 1);
   
   // Check for command line arguments (e.g., "aegis p1")
-  const args = process.argv.slice(2);
   if (args.length > 0) {
     const initialCmd = args.join(' ');
     console.log(`\x1b[90m› Executing startup command: ${initialCmd}\x1b[0m`);
-    await handleCommand(initialCmd);
+    await handleCommand(initialCmd, { prompt: false });
+    process.exit(0);
   } else {
     rl.prompt();
   }
 }
 
 rl.on('line', handleCommand).on('close', () => {
-  process.exit(0);
+  if (startupArgs.length === 0) {
+    process.exit(0);
+  }
 });
 
 start();

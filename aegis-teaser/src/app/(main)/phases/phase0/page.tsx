@@ -1,6 +1,6 @@
 'use client'
 export const dynamic = 'force-dynamic'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import styles from './phase0.module.css'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -14,6 +14,7 @@ export default function Phase0Page() {
   const [step, setStep] = useState<'selection' | 'config' | 'analyzing' | 'stack_confirm'>('selection')
   const [repos, setRepos] = useState<any[]>([])
   const [loadingRepos, setLoadingRepos] = useState(false)
+  const [githubUser, setGithubUser] = useState<any>(null)
   const [detectedStack, setDetectedStack] = useState(['Next.js', 'TypeScript', 'TailwindCSS', 'Node.js'])
   const [newTech, setNewTech] = useState('')
   const router = useRouter()
@@ -22,12 +23,13 @@ export default function Phase0Page() {
     setLoadingRepos(true)
     setSourceType('github')
     setStep('config')
-    const { repos, error } = await getGitHubRepos()
+    const { repos, user, error } = await getGitHubRepos()
     if (error) {
       alert(error)
       setStep('selection')
     } else {
       setRepos(repos || [])
+      setGithubUser(user)
     }
     setLoadingRepos(false)
   }
@@ -73,16 +75,22 @@ export default function Phase0Page() {
         return
       }
 
-      // Create project in database with verified tech stack
-      const result = await createProject({
-        name: selectedRepo?.name || url.split('/').pop() || 'Untitled Project',
-        language: selectedRepo?.language || detectedStack[0] || 'Unknown',
-        repo_url: url,
-        tech_stack: detectedStack
-      })
-      
-      if (!result.success) {
-        throw new Error(result.error)
+      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+      let projectId = 'local-project-' + Date.now()
+
+      if (!isLocal) {
+        // Create project in database with verified tech stack
+        const result = await createProject({
+          name: selectedRepo?.name || url.split('/').pop() || 'Untitled Project',
+          language: selectedRepo?.language || detectedStack[0] || 'Unknown',
+          repo_url: url,
+          tech_stack: detectedStack
+        })
+        
+        if (!result.success) {
+          throw new Error(result.error)
+        }
+        projectId = result.data?.id
       }
       
       // Store scan context for Phase 1
@@ -90,7 +98,7 @@ export default function Phase0Page() {
         repoUrl: url,
         repoName: selectedRepo?.name || url.split('/').pop() || 'Untitled Project',
         techStack: detectedStack,
-        projectId: result.data?.id
+        projectId: projectId
       }))
       
       // Redirect to Phase 1 for source code scanning
@@ -122,10 +130,20 @@ export default function Phase0Page() {
               <div className={styles.fullPageBody}>
                 <div className={styles.filterRow}>
                   <div className={styles.userSelector}>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/>
-                    </svg>
-                    <span>langss1</span>
+                    {githubUser ? (
+                      <>
+                        <img src={githubUser.avatar_url} alt="Profile" className={styles.userAvatarSmall} />
+                        <span>{githubUser.login}</span>
+                        <div className={styles.connectedDot} />
+                      </>
+                    ) : (
+                      <>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/>
+                        </svg>
+                        <span>Guest</span>
+                      </>
+                    )}
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" style={{marginLeft: 'auto', opacity: 0.3}}><path d="m6 9 6 6 6-6"/></svg>
                   </div>
                   <div className={styles.searchBarFull}>
@@ -183,15 +201,23 @@ export default function Phase0Page() {
                     <p>Select your target source to start AEGIS autonomous analysis.</p>
 
                     <div className={styles.cardGrid}>
+                      <div className={styles.selectionCard} onClick={() => {
+                        localStorage.setItem('aegis_scan_context', JSON.stringify({
+                          repoName: 'Local Project',
+                          isLocal: true,
+                          techStack: ['Detected Local Stack']
+                        }))
+                        router.push('/phases/phase1')
+                      }} style={{ border: '2px solid #dc2626', background: 'rgba(220,38,38,0.05)' }}>
+                        <div className={styles.iconBox}>💻</div>
+                        <h2>Scan Current Project</h2>
+                        <span>Analyze this Aegis folder directly from your disk (No GitHub needed).</span>
+                      </div>
+                      
                       <div className={styles.selectionCard} onClick={handleFetchRepos}>
                         <div className={styles.iconBox}>📦</div>
                         <h2>GitHub Repository</h2>
                         <span>Connect your private or public repository for full SAST analysis.</span>
-                      </div>
-                      <div className={styles.selectionCard} onClick={() => { setSourceType('public'); setStep('config'); }}>
-                        <div className={styles.iconBox}>🌐</div>
-                        <h2>Public Website</h2>
-                        <span>Scan a live production URL for DAST and surface vulnerabilities.</span>
                       </div>
                     </div>
                   </motion.div>

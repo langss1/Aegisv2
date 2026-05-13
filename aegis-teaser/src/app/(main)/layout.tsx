@@ -51,8 +51,7 @@ export default function DashboardLayout({
   const securityPhases = [
     { name: 'Ingestion', href: '/phases/phase0', phase: '0' },
     { name: 'SAST & Heal', href: '/phases/phase1', phase: '1' },
-    { name: 'DAST', href: '/phases/phase2', phase: '2' },
-    { name: 'Monitor', href: '/phases/phase3', phase: '3' },
+    { name: 'Monitor', href: '/phases/phase3', phase: '2' },
   ]
 
   return (

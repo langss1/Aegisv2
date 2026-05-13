@@ -18,27 +18,31 @@ export default function Navbar() {
         <div className={styles.left}>
             <Link href="/" className={styles.logo}>
               <div className={styles.logoIcon}>
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                  <path d="M12 2L3 7v10l9 5 9-5V7L12 2z" stroke="white" strokeWidth="1.5" fill="rgba(255,0,0,0.4)"/>
+                <svg width="24" height="24" viewBox="0 0 100 100">
+                  <path 
+                    d="M50 5 L90 27.5 L90 72.5 L50 95 L10 72.5 L10 27.5 Z" 
+                    fill="#800000" 
+                    stroke="white" 
+                    strokeWidth="4"
+                  />
                 </svg>
               </div>
               <span className={styles.logoText}>Aegis</span>
             </Link>
         </div>
 
-        <ul className={styles.navLinks}>
-          <li><a href="#platform">Platform</a></li>
-          <li><a href="#solutions">Solutions</a></li>
-          <li><a href="#engine">AI Engine</a></li>
-          <li><a href="#pricing">Pricing</a></li>
-          <li><a href="#docs">Docs</a></li>
-        </ul>
-
-        <div className={styles.navActions}>
-          <Link href="/login" className={styles.loginBtn}>
-            Login
+        <div className={styles.right}>
+          <ul className={styles.navLinks}>
+            <li><Link href="/users">Users</Link></li>
+            <li><Link href="/developer">Developer</Link></li>
+            <li><Link href="/docs">Documentation</Link></li>
+          </ul>
+          
+          <Link href="/get-started" className={styles.btnGet}>
+            Get Aegis
           </Link>
         </div>
+
       </div>
     </nav>
   )

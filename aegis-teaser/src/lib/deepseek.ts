@@ -171,3 +171,46 @@ Return only valid JSON, no markdown.`;
     confidence: parsed.confidence ?? 70,
   };
 }
+
+/* ────────────────────────────────────────────
+ * 3. AI-powered Auto-Fix (Remediation)
+ * ──────────────────────────────────────────── */
+export async function generateAutoFix(vuln: {
+  type: string;
+  severity: string;
+  file: string;
+  line: number;
+  code: string;
+  description: string;
+}) {
+  const prompt = `As a security expert, provide a fix for the following vulnerability.
+  
+Vulnerability Type: ${vuln.type}
+Severity: ${vuln.severity}
+File: ${vuln.file}:${vuln.line}
+Code Snippet: 
+${vuln.code}
+
+Description: ${vuln.description}
+
+Provide the fix in JSON format:
+{
+  "fixedCode": "the complete fixed code snippet",
+  "explanation": "brief explanation of the fix",
+  "confidence": 0.0-1.0
+}
+
+Return only valid JSON, no markdown code blocks.`;
+
+  const raw = await callDeepseek(
+    "You are AEGIS AI, an advanced vulnerability remediation engine. You output high-quality, secure code fixes in JSON format.",
+    prompt,
+    1000
+  );
+
+  return parseJSON(raw, {
+    fixedCode: vuln.code,
+    explanation: "AI analysis failed, manual review recommended.",
+    confidence: 0.1
+  });
+}

@@ -5,25 +5,54 @@ export async function getGitHubRepos() {
   const supabase = await createClient()
   const { data: { session } } = await supabase.auth.getSession()
 
-  if (!session?.provider_token) {
-    return { error: 'No GitHub token found. Please sign in with GitHub again.' }
+  const isDev = process.env.NODE_ENV === 'development'
+  let token = session?.provider_token || (isDev ? process.env.GITHUB_TOKEN : null)
+
+  // Fallback for localhost: if no token (or still using placeholder), try to fetch public repos for 'langss1'
+  if ((!token || token === 'your_github_pat_here') && isDev) {
+    try {
+      const response = await fetch('https://api.github.com/users/langss1/repos?sort=updated&per_page=100', {
+        headers: {
+          Accept: 'application/vnd.github+json',
+        },
+        next: { revalidate: 0 }
+      })
+      if (response.ok) {
+        const repos = await response.json()
+        return { repos, isFallback: true }
+      }
+    } catch (e) {}
+    
+    // Only return error if fallback also failed and we REALLY don't have a token
+    if (!token || token === 'your_github_pat_here') {
+      return { error: 'GitHub Token tidak ditemukan! Silakan isi GITHUB_TOKEN di file .env untuk mengakses repo privat Anda.' }
+    }
   }
 
   try {
     const response = await fetch('https://api.github.com/user/repos?sort=updated&per_page=100', {
       headers: {
-        Authorization: `Bearer ${session.provider_token}`,
+        Authorization: `Bearer ${token}`,
         Accept: 'application/vnd.github+json',
       },
       next: { revalidate: 0 }
     })
 
-    if (!response.ok) {
-      throw new Error('Failed to fetch repositories from GitHub')
-    }
-
     const repos = await response.json()
-    return { repos }
+    
+    // Fetch user info for UI "Connected" state
+    let user = null
+    try {
+      const userRes = await fetch('https://api.github.com/user', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: 'application/vnd.github+json',
+        }
+      })
+      if (userRes.ok) user = await userRes.json()
+    } catch (e) {}
+
+    return { repos, user }
   } catch (error: any) {
     return { error: error.message }
   }
@@ -33,14 +62,23 @@ export async function analyzeGitHubRepo(repoFullName: string) {
   const supabase = await createClient()
   const { data: { session } } = await supabase.auth.getSession()
   
-  if (!session?.provider_token) {
+  const isDev = process.env.NODE_ENV === 'development'
+  let token = session?.provider_token || (isDev ? process.env.GITHUB_TOKEN : null)
+
+  if (token === 'your_github_pat_here') {
+    token = null
+  }
+
+  if (!token && !isDev) {
     return { stack: [], error: 'GitHub connection lost. Please re-login.' }
   }
 
   try {
-    const headers = {
-      'Authorization': `Bearer ${session.provider_token}`,
+    const headers: Record<string, string> = {
       'Accept': 'application/vnd.github.v3+json'
+    }
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
     }
 
     // 1. Fetch Full Recursive Tree

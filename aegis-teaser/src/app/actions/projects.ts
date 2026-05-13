@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache'
 
 export async function getProjects() {
   const supabase = await createClient()
+  if (!supabase) return []
   const { data, error } = await supabase
     .from('projects')
     .select('*')
@@ -73,6 +74,7 @@ export async function deleteProject(id: string) {
 
 export async function getDashboardStats() {
   const supabase = await createClient()
+  if (!supabase) return { projectCount: 0, avgScore: 0, vulnerableCount: 0 }
   
   // Ambil total project
   const { count: projectCount } = await supabase

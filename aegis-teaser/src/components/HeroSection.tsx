@@ -8,20 +8,15 @@ import { motion } from 'framer-motion'
 const ParticleField = nextDynamic(() => import('./ParticleField'), { ssr: false })
 
 export default function HeroSection({ onComplete }: { onComplete: () => void }) {
-  const [isRevealed, setIsRevealed] = useState(false)
-  const [showGradient, setShowGradient] = useState(false)
-  const fullText = 'A new way to stay secure with Agentic AI'
+  const [isRevealed, setIsRevealed] = useState(true)
+  const [showGradient, setShowGradient] = useState(true)
+  const fullText = 'Build Fast, Secure More!'
   const words = fullText.split(' ')
 
   useEffect(() => {
-    // Reveal content and trigger final gradient animation after all words finished
-    const timer = setTimeout(() => {
-       setIsRevealed(true)
-       setShowGradient(true)
-       onComplete()
-    }, words.length * 300 + 1000) 
-    return () => clearTimeout(timer)
-  }, [onComplete, words.length])
+    // Reveal content and trigger final gradient animation immediately
+    onComplete()
+  }, [onComplete])
 
   return (
     <section className={styles.hero}>
@@ -38,7 +33,7 @@ export default function HeroSection({ onComplete }: { onComplete: () => void }) 
                   type: 'spring',
                   stiffness: 70,
                   damping: 20,
-                  delay: i * 0.4,
+                  delay: i * 0.5,
                   mass: 1
                 }}
                 style={{ display: 'inline-block', marginRight: '0.25em' }}
@@ -50,20 +45,38 @@ export default function HeroSection({ onComplete }: { onComplete: () => void }) 
 
           <div className={`${styles.revealContent} ${isRevealed ? styles.visible : ''}`}>
             <p className={styles.subtextCentered}>
-               Empowering developers with autonomous security agents.
+              {"Empowering teams with autonomous security agents and relentless QA testing intelligence.".split(" ").map((word, i) => (
+                <motion.span
+                  key={i}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ 
+                    duration: 0.5,
+                    delay: 3.0 + (i * 0.1) 
+                  }}
+                  style={{ display: 'inline-block', marginRight: '0.25em' }}
+                >
+                  {word}
+                </motion.span>
+              ))}
             </p>
 
-            <div className={styles.actionsCentered}>
+            <motion.div 
+              className={styles.actionsCentered}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 5.0, duration: 0.8 }}
+            >
               <Link href="/login" className="btn-primary-large">
-                 Login to Dashboard
+                 Get Software
               </Link>
               <button 
                 className="btn-outline-large" 
                 onClick={() => window.scrollTo({top: 800, behavior: 'smooth'})}
               >
-                Explore by Terminal
+                Documentation & Features
               </button>
-            </div>
+            </motion.div>
           </div>
         </div>
       </div>

@@ -195,7 +195,18 @@ export async function GET() {
         }
         
         // Get the vulnerable app path from environment or use default
-        const targetPath = process.env.VULNERABLE_APP_PATH || path.resolve(process.cwd(), "../vulnerable-app");
+        let targetPath = process.env.VULNERABLE_APP_PATH;
+        if (!targetPath) {
+          // Look for 'vuln-app' or 'vulnerable-app' in the parent directory of phase3
+          const rootDir = path.resolve(process.cwd(), "..");
+          if (fs.existsSync(path.join(rootDir, "vuln-app"))) {
+            targetPath = path.join(rootDir, "vuln-app");
+          } else if (fs.existsSync(path.join(rootDir, "vulnerable-app"))) {
+            targetPath = path.join(rootDir, "vulnerable-app");
+          } else {
+            targetPath = path.resolve(process.cwd(), "../vulnerable-app"); // Fallback
+          }
+        }
         
         try {
           // Find and analyze files

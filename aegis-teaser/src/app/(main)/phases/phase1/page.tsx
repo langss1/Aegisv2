@@ -87,10 +87,15 @@ export default function Phase1Page() {
     }, 500)
 
     try {
+      const context = JSON.parse(localStorage.getItem('aegis_scan_context') || '{}')
+      
       const response = await fetch('/api/scan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ repoUrl })
+        body: JSON.stringify({ 
+          repoUrl: repoUrl,
+          local: context.isLocal
+        })
       })
 
       const data = await response.json()
@@ -118,7 +123,6 @@ export default function Phase1Page() {
       setIsScanning(false)
     }
   }
-
   const simulateDemoScan = () => {
     const interval = setInterval(() => {
       setProgress(prev => {
@@ -126,26 +130,6 @@ export default function Phase1Page() {
           clearInterval(interval)
           setIsScanning(false)
           setFindings([
-            { 
-              id: 1, 
-              file: 'config/database.py', 
-              issue: 'Hardcoded Database Password', 
-              severity: 'Critical',
-              currentCode: `DB_PASSWORD = "admin123!@#secret"`,
-              fixedCode: `DB_PASSWORD = os.environ.get("DB_PASSWORD")`,
-              line: 8,
-              description: 'Password database terekspos di source code! Hacker bisa mengakses database Anda.'
-            },
-            { 
-              id: 2, 
-              file: 'services/auth.py', 
-              issue: 'Hardcoded API Secret Key', 
-              severity: 'Critical',
-              currentCode: `JWT_SECRET = "MySuper$ecretKey2024!xyz"`,
-              fixedCode: `JWT_SECRET = os.environ.get("JWT_SECRET")`,
-              line: 15,
-              description: 'JWT Secret key terekspos! Hacker bisa membuat token palsu dan bypass authentication.'
-            },
             { 
               id: 3, 
               file: 'config/aws.js', 
@@ -207,35 +191,91 @@ export default function Phase1Page() {
     }
   }
 
-  const handleApplyPatch = (finding: Finding) => {
-    setFindings(prev => prev.map(f => 
-      f.id === finding.id ? { ...f, patched: true } : f
-    ))
-    setSelectedFinding(null)
-  }
-
-  const handlePatchAllAndContinue = async () => {
-    // Store patched findings
-    const patchedFindings = findings.map(f => ({ ...f, patched: true }))
-    localStorage.setItem('aegis_scan_findings', JSON.stringify(patchedFindings))
-    
-    // Send Telegram notification for Phase 1 completion
+  const handleApplyPatch = async (finding: Finding) => {
     try {
-      await fetch('/api/telegram/notify', {
+      const context = JSON.parse(localStorage.getItem('aegis_scan_context') || '{}')
+      
+      const response = await fetch('/api/fix', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          type: 'phase1_complete',
-          projectName: scanContext?.repoName || 'Unknown Project',
-          findings: findings.length,
-          summary
+          action: 'apply-fix',
+          file: finding.file,
+          fixedCode: finding.fixedCode,
+          vulnerability: {
+            line: finding.line,
+            type: finding.issue || finding.type
+          },
+          repoUrl: context.repoUrl,
+          isLocal: context.isLocal
         })
       })
-    } catch (e) {
-      console.log('Telegram notification skipped')
+
+      const data = await response.json()
+      if (data.success) {
+        setFindings(prev => prev.map(f => 
+          f.id === finding.id ? { ...f, patched: true } : f
+        ))
+        setSelectedFinding(null)
+      } else {
+        alert('Failed to apply fix: ' + (data.error || 'Unknown error'))
+      }
+    } catch (err) {
+      console.error('Error applying fix:', err)
+      alert('Error applying fix. Please check console.')
     }
+  }
+
+  const [isPatching, setIsPatching] = useState(false)
+
+  const handlePatchAllAndContinue = async () => {
+    if (findings.length === 0) {
+      router.push('/phases/phase3')
+      return
+    }
+
+    setIsPatching(true)
     
-    router.push('/phases/phase2')
+    try {
+      // Group findings by file for batch patching
+      const filesToFix = Array.from(new Set(findings.map(f => f.file)))
+      const context = JSON.parse(localStorage.getItem('aegis_scan_context') || '{}')
+      
+      for (const file of filesToFix) {
+        const fileFixes = findings.filter(f => f.file === file).map(f => ({
+          line: f.line,
+          type: f.issue || f.type,
+          fixedCode: f.fixedCode
+        }))
+
+        await fetch('/api/fix', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'batch-apply',
+            file: file,
+            fixes: fileFixes,
+            repoUrl: context.repoUrl,
+            isLocal: context.isLocal
+          })
+        })
+      }
+
+      // Store results
+      localStorage.setItem('aegis_fix_results', JSON.stringify({
+        total: findings.length,
+        fixed: findings.length,
+        timestamp: new Date().toISOString()
+      }))
+      
+      router.push('/phases/phase3')
+    } catch (err: any) {
+      console.error('Patching failed:', err)
+      alert('Failed to apply some patches. Moving to Monitoring phase.')
+      router.push('/phases/phase3')
+    } finally {
+      setIsPatching(false)
+    }
   }
 
   const totalFindings = summary.critical + summary.high + summary.medium + summary.low
@@ -265,7 +305,7 @@ export default function Phase1Page() {
                     {log}
                   </motion.div>
                 ))}
-                {scanLogs.length === 0 && [...Array(6)].map((_, i) => (
+                {scanLogs.length === 0 && ["A1B2C3D4", "E5F6G7H8", "I9J0K1L2", "M3N4O5P6", "Q7R8S9T0", "U1V2W3X4"].map((hex, i) => (
                   <motion.div 
                     key={i}
                     className={styles.codeLine}
@@ -273,7 +313,7 @@ export default function Phase1Page() {
                     animate={{ x: 0, opacity: [0, 1, 0] }}
                     transition={{ duration: 2, repeat: Infinity, delay: i * 0.3 }}
                   >
-                    {`0x${Math.random().toString(16).slice(2, 10).toUpperCase()} >> ANALYZING_BLOCK_${i}...`}
+                    {`0x${hex} >> ANALYZING_BLOCK_${i}...`}
                   </motion.div>
                 ))}
               </div>
@@ -346,8 +386,18 @@ export default function Phase1Page() {
               </div>
               <div className={styles.headerRight}>
                 <div className={styles.aiBadge}>AI HEALING READY</div>
-                <button onClick={handlePatchAllAndContinue} className={styles.nextPhaseBtn}>
-                  {findings.length > 0 ? 'Patch All & Continue' : 'Continue to Phase 2'}
+                <button 
+                  onClick={handlePatchAllAndContinue} 
+                  className={styles.nextPhaseBtn}
+                  disabled={isPatching}
+                >
+                  {isPatching ? (
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <div className={styles.spinnerSmall} /> Applying Surgical Fixes...
+                    </span>
+                  ) : (
+                    findings.length > 0 ? 'Patch All & Continue' : 'Continue to Monitoring'
+                  )}
                 </button>
               </div>
             </div>

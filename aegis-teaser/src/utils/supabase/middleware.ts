@@ -41,11 +41,15 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser()
 
   // Skip auth redirect in development mode or if SKIP_AUTH is set
-  const skipAuth = process.env.SKIP_AUTH === 'true' || process.env.NODE_ENV === 'development'
+  const isDev = process.env.NODE_ENV === 'development' || process.env.NEXT_PUBLIC_VERCEL_ENV === 'development'
+  const skipAuth = process.env.SKIP_AUTH === 'true' || isDev
+
+  if (isDev || skipAuth) {
+    return supabaseResponse
+  }
 
   if (
     !user &&
-    !skipAuth &&
     !request.nextUrl.pathname.startsWith('/login') &&
     !request.nextUrl.pathname.startsWith('/register') &&
     !request.nextUrl.pathname.startsWith('/auth') &&

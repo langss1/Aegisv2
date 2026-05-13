@@ -1,26 +1,54 @@
 {
-  "name": "aegis-cli",
-  "version": "0.1.0",
-  "private": true,
+  "name": "aegis-security",
+  "version": "1.0.1",
+  "private": false,
+  "description": "Autonomous Security Engine for AI-driven SAST, DAST, and Remediation.",
+  "type": "commonjs",
+  "author": "AEGIS Security Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/langss1/Aegis-Windows.git"
+  },
+  "keywords": [
+    "security",
+    "ai",
+    "sast",
+    "dast",
+    "remediation",
+    "autonomous"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "bin/aegis.js",
+    "README.md"
+  ],
   "scripts": {
     "dev": "next dev -p 3001",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test": "node --check bin/aegis.js",
+    "pack:dry": "npm pack --dry-run"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "bin": {
-    "aegis": "./bin/aegis.js"
+    "aegis": "bin/aegis.js",
+    "aegis-security": "bin/aegis.js"
   },
-  "dependencies": {
-    "next": "16.2.6",
-    "react": "19.2.4",
-    "react-dom": "19.2.4",
-    "framer-motion": "^11.0.0"
-  },
+  "dependencies": {},
   "devDependencies": {
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "typescript": "^5"
+    "typescript": "^5",
+    "next": "16.2.6",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "framer-motion": "^11.0.0"
   }
 }

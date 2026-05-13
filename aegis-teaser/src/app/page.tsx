@@ -5,19 +5,24 @@ import styles from './page.module.css'
 import Navbar from '@/components/Navbar'
 import HeroSection from '@/components/HeroSection'
 import DemoSection from '@/components/DemoSection'
-import WhyAegisSection from '@/components/WhyAegisSection'
 import ForWhoSection from '@/components/ForWhoSection'
 import TestimonialsSection from '@/components/TestimonialsSection'
 import TeamSection from '@/components/TeamSection'
-import CTASection from '@/components/CTASection'
 import Footer from '@/components/Footer'
 import IconRibbonSection from '@/components/IconRibbonSection'
+import FeaturesSection from '@/components/FeaturesSection'
+import SecuritySection from '@/components/SecuritySection'
+import LocalPenTestSection from '@/components/LocalPenTestSection'
+import DevelopmentSection from '@/components/DevelopmentSection'
+import AskSection from '@/components/AskSection'
+import SecurityOnCodeSection from '@/components/SecurityOnCodeSection'
+import DownloadSection from '@/components/DownloadSection'
 
 import { useState, useEffect } from 'react'
 const ParticleField = nextDynamic(() => import('@/components/ParticleField'), { ssr: false })
 
 export default function Home() {
-  const [isRevealed, setIsRevealed] = useState(false)
+  const [isRevealed, setIsRevealed] = useState(true)
   const [mousePos, setMousePos] = useState({ x: -100, y: -100 })
 
   useEffect(() => {
@@ -44,11 +49,13 @@ export default function Home() {
         <div className={styles.revealContainer}>
           <DemoSection />
           <IconRibbonSection />
-          <WhyAegisSection />
-          <ForWhoSection />
-          <TestimonialsSection />
-          <TeamSection />
-          <CTASection />
+          <FeaturesSection />
+          <SecuritySection />
+          <LocalPenTestSection />
+          <DevelopmentSection />
+          <AskSection />
+          <SecurityOnCodeSection />
+          <DownloadSection />
           <Footer />
         </div>
       )}

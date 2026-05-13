@@ -55,7 +55,7 @@ export default function Phase2Page() {
     addLog('Loading vulnerabilities from Phase 1...')
 
     // Try to load from localStorage (from Phase 1)
-    const savedResults = localStorage.getItem('aegis_scan_results')
+    const savedResults = localStorage.getItem('aegis_scan_findings') || localStorage.getItem('aegis_scan_results')
     
     if (savedResults) {
       try {
@@ -210,21 +210,45 @@ export default function Phase2Page() {
 
     addLog(`[FIX] Applying fix for ${vuln.type} in ${vuln.file}...`)
     
-    // Simulate applying fix
-    await new Promise(r => setTimeout(r, 800))
+    try {
+      const scanContext = JSON.parse(localStorage.getItem('aegis_scan_context') || '{}')
 
-    setVulnerabilities(prev => prev.map(v => 
-      v.id === vuln.id ? { 
-        ...v, 
-        fix: { ...v.fix!, status: 'applied' }
-      } : v
-    ))
+      const response = await fetch('/api/fix', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'apply-fix',
+          file: vuln.file,
+          fixedCode: vuln.fix.fixedCode,
+          vulnerability: vuln,
+          repoUrl: scanContext.repoUrl,
+          isLocal: scanContext.isLocal
+        })
+      })
 
-    addLog(`[FIX] ✓ ${vuln.file}:${vuln.line} - Fixed!`)
-    addLog(`[GIT] Auto-pushing fix to GitHub repository...`)
-    await new Promise(r => setTimeout(r, 1000))
-    addLog(`[GIT] ✓ Successfully pushed to GitHub.`)
-    setSelectedVuln(null)
+      const data = await response.json()
+
+      if (data.success) {
+        setVulnerabilities(prev => prev.map(v => 
+          v.id === vuln.id ? { 
+            ...v, 
+            fix: { ...v.fix!, status: 'applied' }
+          } : v
+        ))
+
+        addLog(`[FIX] ✓ ${vuln.file}:${vuln.line} - Fixed!`)
+        if (data.github_url) {
+          addLog(`[GIT] ✓ Successfully pushed to GitHub: ${data.message}`)
+        } else {
+          addLog(`[LOCAL] ✓ Successfully patched local file: ${data.message}`)
+        }
+        setSelectedVuln(null)
+      } else {
+        throw new Error(data.error || 'Failed to apply fix')
+      }
+    } catch (error: any) {
+      addLog(`[ERROR] Failed to apply fix: ${error.message}`)
+    }
   }
 
   const skipFix = (vuln: VulnWithFix) => {
@@ -234,36 +258,58 @@ export default function Phase2Page() {
         fix: { ...v.fix!, status: 'skipped' }
       } : v
     ))
-    addLog(`[SKIP] Skipped fix for ${vuln.type}`)
+          addLog(`[SKIP] Skipped fix for ${vuln.type}`)
     setSelectedVuln(null)
   }
 
   const applyAllFixes = async () => {
-    const pendingVulns = vulnerabilities.filter(v => v.fix?.status === 'ready')
-    if (pendingVulns.length === 0) return
+    const readyFixes = vulnerabilities.filter(v => v.fix && v.fix.status === 'ready')
+    if (readyFixes.length === 0) return
 
+    addLog(`[12.11.54] AEGIS AUTO-FIX - Applying all ${readyFixes.length} fixes...`)
     setApplyingAll(true)
-    addLog('═══════════════════════════════════════')
-    addLog('AEGIS AUTO-FIX - Applying all fixes...')
-    addLog('═══════════════════════════════════════')
 
-    for (const vuln of pendingVulns) {
-      await applyFix(vuln)
+    try {
+      const scanContext = JSON.parse(localStorage.getItem('aegis_scan_context') || '{}')
+      const filesToFix = Array.from(new Set(readyFixes.map(v => v.file)))
+
+      for (const file of filesToFix) {
+        const fileFixes = readyFixes.filter(v => v.file === file).map(v => ({
+          line: v.line,
+          type: v.type,
+          fixedCode: v.fix!.fixedCode
+        }))
+
+        addLog(`[FIX] Batch applying fixes for ${file}...`)
+        
+        const response = await fetch('/api/fix', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'batch-apply',
+            file,
+            fixes: fileFixes,
+            repoUrl: scanContext.repoUrl,
+            isLocal: scanContext.isLocal
+          })
+        })
+
+        const data = await response.json()
+        if (!data.success) throw new Error(data.error || `Failed to fix ${file}`)
+        
+        addLog(`[GIT] ✓ ${data.message}`)
+      }
+
+      setVulnerabilities(prev => prev.map(v => 
+        v.fix && v.fix.status === 'ready' ? { ...v, fix: { ...v.fix, status: 'applied' } } : v
+      ))
+      
+      addLog(`[12.12.12] ALL FIXES APPLIED!`)
+    } catch (error: any) {
+      addLog(`[ERROR] Batch fix failed: ${error.message}`)
+    } finally {
+      setApplyingAll(false)
     }
-
-    setApplyingAll(false)
-    addLog('═══════════════════════════════════════')
-    addLog('ALL FIXES APPLIED!')
-    addLog('Initiating Auto-Push to GitHub...')
-    await new Promise(r => setTimeout(r, 1000))
-    addLog('[GIT] git add .')
-    await new Promise(r => setTimeout(r, 500))
-    addLog('[GIT] git commit -m "fix(security): auto-remediated vulnerabilities via AEGIS"')
-    await new Promise(r => setTimeout(r, 1000))
-    addLog('[GIT] git push origin main')
-    await new Promise(r => setTimeout(r, 1500))
-    addLog('✅ Successfully pushed fixed code to GitHub repository.')
-    addLog('═══════════════════════════════════════')
   }
 
   const proceedToPhase3 = () => {
