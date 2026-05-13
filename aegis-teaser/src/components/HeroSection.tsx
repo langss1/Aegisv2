@@ -32,12 +32,12 @@ export default function HeroSection({ onComplete }: { onComplete: () => void }) 
             {words.map((word, i) => (
               <motion.span
                 key={i}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
                 transition={{ 
                   duration: 1.5, 
                   delay: i * 0.4,
-                  ease: "easeInOut"
+                  ease: "easeOut"
                 }}
                 style={{ display: 'inline-block', marginRight: '0.25em' }}
               >
