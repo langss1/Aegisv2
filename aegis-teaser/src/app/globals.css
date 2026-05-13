@@ -58,29 +58,16 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-.custom-cursor {
-  position: fixed;
-  width: 20px;
-  height: 20px;
-  background: #ff0000;
-  border-radius: 50%;
-  pointer-events: none;
-  z-index: 9999;
-  mix-blend-mode: screen;
-  transition: transform 0.1s ease-out;
-  box-shadow: 0 0 20px #ff0000;
-}
-
 .custom-cursor-glow {
   position: fixed;
-  width: 400px;
-  height: 400px;
-  background: radial-gradient(circle, rgba(255, 0, 0, 0.08) 0%, transparent 70%);
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(255, 0, 0, 0.05) 0%, transparent 70%);
   pointer-events: none;
-  z-index: 9998;
+  z-index: 1;
   border-radius: 50%;
   transform: translate(-50%, -50%);
-  filter: blur(50px);
+  filter: blur(60px);
   will-change: transform;
 }
 

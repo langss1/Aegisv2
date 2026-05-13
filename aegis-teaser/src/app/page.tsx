@@ -33,10 +33,6 @@ export default function Home() {
         className="custom-cursor-glow" 
         style={{ left: mousePos.x, top: mousePos.y }} 
       />
-      <div 
-        className="custom-cursor" 
-        style={{ left: mousePos.x, top: mousePos.y }} 
-      />
 
       <ParticleField />
       <div className={styles.gridBg} />
