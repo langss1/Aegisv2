@@ -8,6 +8,7 @@ import DemoSection from '@/components/DemoSection'
 import WhyAegisSection from '@/components/WhyAegisSection'
 import ForWhoSection from '@/components/ForWhoSection'
 import TestimonialsSection from '@/components/TestimonialsSection'
+import TeamSection from '@/components/TeamSection'
 import CTASection from '@/components/CTASection'
 import Footer from '@/components/Footer'
 import IconRibbonSection from '@/components/IconRibbonSection'
@@ -46,6 +47,7 @@ export default function Home() {
           <WhyAegisSection />
           <ForWhoSection />
           <TestimonialsSection />
+          <TeamSection />
           <CTASection />
           <Footer />
         </div>
