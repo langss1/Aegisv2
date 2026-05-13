@@ -22,15 +22,15 @@ export default function IconRibbonSection() {
     offset: ["start end", "end start"]
   })
 
-  // Smooth out the scroll progress
+  // Smooth out the scroll progress - ultra smooth for a 'floaty' feel
   const smoothProgress = useSpring(scrollYProgress, {
-    stiffness: 60, // Slower responsiveness
-    damping: 25,
+    stiffness: 30, // Very low stiffness for slow reaction
+    damping: 40,   // High damping for no bounce
     restDelta: 0.001
   })
 
-  // Horizontal movement using smoothed progress - reduced distance for slower feel
-  const xTranslate = useTransform(smoothProgress, [0, 1], [0, -600])
+  // Horizontal movement using smoothed progress - very short distance for slow movement
+  const xTranslate = useTransform(smoothProgress, [0, 1], [0, -400])
 
   const fullText = "Aegis is the autonomous security agent platform, designed to analyze, defend, and heal your infrastructure in the agent-first era. We empower developers with advanced AI agents that identify vulnerabilities, mitigate risks, and ensure a robust security posture across your entire tech stack."
 
