@@ -29,6 +29,8 @@
   color: #ffffff;
   margin-bottom: 32px;
   letter-spacing: -2px;
+  position: relative;
+  z-index: 10;
   background: linear-gradient(to bottom, #ffffff 40%, #ff0000 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;

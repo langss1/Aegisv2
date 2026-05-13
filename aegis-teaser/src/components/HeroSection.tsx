@@ -32,8 +32,8 @@ export default function HeroSection({ onComplete }: { onComplete: () => void }) 
             {words.map((word, i) => (
               <motion.span
                 key={i}
-                initial={{ opacity: 0, y: 10, filter: 'blur(8px)' }}
-                animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
                 transition={{ 
                   duration: 1.5, 
                   delay: i * 0.4,
