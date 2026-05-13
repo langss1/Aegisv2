@@ -154,7 +154,7 @@ ${batch.map(f => `--- FILE: ${f.path} ---\n${f.content}`).join('\n\n')}`
       })
       const data = await response.json()
       const content = data.choices[0].message.content
-      const jsonMatch = content.match(/\[.*\]/s)
+      const jsonMatch = content.match(/\[[\s\S]*\]/)
       if (jsonMatch) {
         const batchFindings = JSON.parse(jsonMatch[0])
         batchFindings.forEach((f: any) => {
