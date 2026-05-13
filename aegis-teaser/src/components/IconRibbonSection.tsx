@@ -1,6 +1,6 @@
 'use client'
 import styles from './IconRibbonSection.module.css'
-import { motion, useScroll, useTransform } from 'framer-motion'
+import { motion, useScroll, useTransform, useSpring } from 'framer-motion'
 import { 
   Shield, Search, Sparkles, Lock, Terminal, Code, 
   Cpu, Activity, Globe, Zap, Fingerprint, Bug,
@@ -22,8 +22,15 @@ export default function IconRibbonSection() {
     offset: ["start end", "end start"]
   })
 
-  // Horizontal movement
-  const xTranslate = useTransform(scrollYProgress, [0, 1], [0, -1200])
+  // Smooth out the scroll progress
+  const smoothProgress = useSpring(scrollYProgress, {
+    stiffness: 100,
+    damping: 30,
+    restDelta: 0.001
+  })
+
+  // Horizontal movement using smoothed progress
+  const xTranslate = useTransform(smoothProgress, [0, 1], [0, -1200])
 
   const fullText = "Aegis is the autonomous security agent platform, designed to analyze, defend, and heal your infrastructure in the agent-first era. We empower developers with advanced AI agents that identify vulnerabilities, mitigate risks, and ensure a robust security posture across your entire tech stack."
 
@@ -54,9 +61,9 @@ export default function IconRibbonSection() {
       <div className={styles.textContainer}>
         <motion.p 
           className={styles.paragraphText}
-          initial={{ opacity: 0, x: -20 }}
+          initial={{ opacity: 0, x: -30 }}
           whileInView={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.8, ease: "easeOut" }}
+          transition={{ duration: 2.0, ease: [0.22, 1, 0.36, 1] }}
           viewport={{ once: true }}
         >
           {fullText}
