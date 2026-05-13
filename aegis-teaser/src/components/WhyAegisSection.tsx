@@ -2,34 +2,36 @@
 import styles from './WhyAegisSection.module.css'
 import { motion } from 'framer-motion'
 
+import { ShieldAlert, Terminal, Landmark, Scale } from 'lucide-react'
+
 const CARDS = [
   {
-    title: 'Indonesia #1 Target Serangan',
-    desc: 'Menurut laporan BSSN 2024, Indonesia menempati peringkat pertama target anomali trafik siber di Asia Tenggara. Infrastruktur kita sangat rentan.',
+    title: 'Biggest Problem: Indonesia #1',
+    desc: 'BSSN 2024 reports Indonesia as the top target for cyber anomalies in SE Asia. Our infrastructure remains highly vulnerable to sophisticated threats.',
     date: 'Jan 20, 2025',
     category: 'Market Risk',
-    visual: '🇮🇩'
+    Icon: ShieldAlert
   },
   {
-    title: 'Budaya "Vibe Coding" Developer',
-    desc: 'Mayoritas developer fokus pada "vibe" dan kecepatan fitur tanpa memahami struktur keamanan kode, meninggalkan celah fatal bagi hacker.',
+    title: 'Developer Neglect & Vibe Coding',
+    desc: 'Speed over security: Developers often ignore code safety for faster delivery, leaving fatal gaps that autonomous agents must heal immediately.',
     date: 'Dec 15, 2024',
     category: 'Internal Gap',
-    visual: '⌨️'
+    Icon: Terminal
   },
   {
-    title: 'Kerugian Hingga Miliaran Rupiah',
-    desc: 'Satu insiden kebocoran data di perusahaan Indonesia rata-rata memakan biaya miliaran Rupiah untuk recovery dan hilangnya kepercayaan publik.',
+    title: 'Billions in Financial Loss',
+    desc: 'A single data breach in Indonesia now costs billions in recovery fees and irreversible loss of public trust. Security is no longer optional.',
     date: 'Nov 22, 2024',
-    category: 'Financial Loss',
-    visual: '💸'
+    category: 'Financial Impact',
+    Icon: Landmark
   },
   {
-    title: 'Full Enforcement UU PDP 2024',
-    desc: 'Masa tenggang UU No. 27/2022 berakhir. Sekarang, kebocoran data adalah tindak pidana dengan denda administrasi hingga 2% pendapatan global.',
+    title: 'Strict UU PDP Enforcement',
+    desc: 'The grace period for UU PDP 2024 has ended. Data leaks are now criminal offenses with heavy fines up to 2% of global annual revenue.',
     date: 'Oct 17, 2024',
-    category: 'Legal / Compliance',
-    visual: '⚖️'
+    category: 'Compliance',
+    Icon: Scale
   }
 ]
 
@@ -54,8 +56,10 @@ export default function WhyAegisSection() {
             >
               <div className={styles.cardVisual}>
                  <div className={styles.dotsOverlay} />
-                 <span className={styles.visualIcon}>{card.visual}</span>
-                 <div className={styles.cardTag}>{card.title.split(' ')[0]}</div>
+                 <div className={styles.iconWrapper}>
+                   <card.Icon size={40} strokeWidth={1.5} color="#ff0000" />
+                 </div>
+                 <div className={styles.cardTag}>{card.category}</div>
               </div>
               <div className={styles.cardContent}>
                  <h3 className={styles.cardTitle}>{card.title}</h3>
