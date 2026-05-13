@@ -45,11 +45,20 @@
 }
 
 .textContainer {
-  max-width: 800px;
+  max-width: 900px;
   text-align: left;
   width: 100%;
   padding: 0 80px;
   margin-right: auto;
+}
+
+.titleText {
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-size: clamp(32px, 5vw, 48px);
+  font-weight: 800;
+  color: #ffffff;
+  margin-bottom: 24px;
+  letter-spacing: -1px;
 }
 
 .paragraphText {

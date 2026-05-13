@@ -59,11 +59,20 @@ export default function IconRibbonSection() {
       </div>
 
       <div className={styles.textContainer}>
+        <motion.h2 
+          className={styles.titleText}
+          initial={{ opacity: 0, x: -30 }}
+          whileInView={{ opacity: 1, x: 0 }}
+          transition={{ duration: 2.0, ease: [0.22, 1, 0.36, 1] }}
+          viewport={{ once: true }}
+        >
+          What is Aegis
+        </motion.h2>
         <motion.p 
           className={styles.paragraphText}
           initial={{ opacity: 0, x: -30 }}
           whileInView={{ opacity: 1, x: 0 }}
-          transition={{ duration: 2.0, ease: [0.22, 1, 0.36, 1] }}
+          transition={{ duration: 2.0, ease: [0.22, 1, 0.36, 1], delay: 0.2 }}
           viewport={{ once: true }}
         >
           {fullText}
