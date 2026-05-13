@@ -1,8 +1,15 @@
-const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN!;
-const BASE = `https://api.telegram.org/bot${BOT_TOKEN}`;
+import { runtimeConfig } from "@/app/api/config/route";
+
+function getBotToken(): string {
+  return runtimeConfig.telegramBotToken || process.env.TELEGRAM_BOT_TOKEN || "";
+}
+
+function getBase(): string {
+  return `https://api.telegram.org/bot${getBotToken()}`;
+}
 
 export function getChatId(): string {
-  return process.env.TELEGRAM_CHAT_ID || "";
+  return runtimeConfig.telegramChatId || process.env.TELEGRAM_CHAT_ID || "";
 }
 
 export async function sendMessage(chatId: string, text: string, replyMarkup?: object) {
@@ -14,7 +21,7 @@ export async function sendMessage(chatId: string, text: string, replyMarkup?: ob
   if (replyMarkup) {
     body.reply_markup = replyMarkup;
   }
-  const res = await fetch(`${BASE}/sendMessage`, {
+  const res = await fetch(`${getBase()}/sendMessage`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -27,12 +34,12 @@ export async function getUpdates(offset?: number) {
   if (offset !== undefined) params.set("offset", String(offset));
   params.set("timeout", "0");
   params.set("_t", String(Date.now()));
-  const res = await fetch(`${BASE}/getUpdates?${params}`, { cache: "no-store" });
+  const res = await fetch(`${getBase()}/getUpdates?${params}`, { cache: "no-store" });
   return res.json();
 }
 
 export async function answerCallbackQuery(callbackQueryId: string, text: string) {
-  const res = await fetch(`${BASE}/answerCallbackQuery`, {
+  const res = await fetch(`${getBase()}/answerCallbackQuery`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ callback_query_id: callbackQueryId, text }),
@@ -51,7 +58,7 @@ export async function editMessageReplyMarkup(chatId: string, messageId: number, 
     // Remove inline keyboard by setting empty inline_keyboard
     body.reply_markup = { inline_keyboard: [] };
   }
-  const res = await fetch(`${BASE}/editMessageReplyMarkup`, {
+  const res = await fetch(`${getBase()}/editMessageReplyMarkup`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -71,7 +78,7 @@ export async function editMessageText(chatId: string, messageId: number, text: s
   } else {
     body.reply_markup = { inline_keyboard: [] };
   }
-  const res = await fetch(`${BASE}/editMessageText`, {
+  const res = await fetch(`${getBase()}/editMessageText`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),

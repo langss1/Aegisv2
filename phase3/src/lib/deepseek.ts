@@ -1,12 +1,16 @@
-const API_KEY = process.env.DEEPSEEK_API_KEY!;
+import { runtimeConfig } from "@/app/api/config/route";
 const BASE_URL = process.env.DEEPSEEK_BASE_URL || "https://api.deepseek.com";
+
+function getApiKey(): string {
+  return runtimeConfig.deepseekApiKey || process.env.DEEPSEEK_API_KEY || "";
+}
 
 async function callDeepseek(system: string, prompt: string, maxTokens = 500) {
   const res = await fetch(`${BASE_URL}/v1/chat/completions`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${API_KEY}`,
+      Authorization: `Bearer ${getApiKey()}`,
     },
     body: JSON.stringify({
       model: "deepseek-chat",
