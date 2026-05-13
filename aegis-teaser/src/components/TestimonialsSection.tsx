@@ -65,8 +65,12 @@ const TESTIMONIALS = [
   },
 ]
 
+import { motion } from 'framer-motion'
+import { User, Quote, Star } from 'lucide-react'
+
 export default function TestimonialsSection() {
   const trackRef = useRef<HTMLDivElement>(null)
+  const titleWords = "Dipercaya oleh Mereka yang Peduli".split(" ")
 
   useEffect(() => {
     const track = trackRef.current
@@ -99,11 +103,28 @@ export default function TestimonialsSection() {
 
   return (
     <section id="testimonials" className={styles.section}>
+      <div className={styles.dotBg} />
       <div className="container">
         <div className={styles.header}>
           <div className={styles.label}>What They Say</div>
           <h2 className={styles.title}>
-            Dipercaya oleh <span className="gradient-text">Mereka yang Peduli</span>
+            {titleWords.map((word, i) => (
+              <motion.span
+                key={i}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ 
+                  type: 'spring',
+                  stiffness: 70,
+                  damping: 20,
+                  delay: i * 0.2,
+                }}
+                viewport={{ once: true }}
+                style={{ display: 'inline-block', marginRight: '0.25em' }}
+              >
+                {word}
+              </motion.span>
+            ))}
           </h2>
           <p className={styles.subtitle}>
             Dari dosen, developer, hingga mahasiswa — AEGIS telah mengubah cara mereka memandang keamanan software.
@@ -111,16 +132,22 @@ export default function TestimonialsSection() {
         </div>
       </div>
 
-      {/* Auto-scrolling testimonials */}
       <div className={styles.carouselWrapper}>
         <div className={styles.fadeLeft} />
         <div className={styles.fadeRight} />
         <div className={styles.track} ref={trackRef}>
           {[...TESTIMONIALS, ...TESTIMONIALS].map((t, i) => (
-            <div key={i} className={styles.card}>
+            <motion.div 
+              key={i} 
+              className={styles.card}
+              whileHover={{ y: -10, scale: 1.02 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+            >
+              <Quote className={styles.quoteIcon} size={60} />
               <div className={styles.cardHeader}>
-                <div className={styles.avatarWrap} style={{ background: `${t.color}20`, border: `1px solid ${t.color}40` }}>
-                  <span className={styles.avatar}>{t.avatar}</span>
+                <div className={styles.avatarWrap} style={{ borderColor: `${t.color}40` }}>
+                  <User size={24} color={t.color} />
+                  <div className={styles.avatarGlow} style={{ backgroundColor: t.color }} />
                 </div>
                 <div>
                   <div className={styles.name}>{t.name}</div>
@@ -129,13 +156,15 @@ export default function TestimonialsSection() {
                 </div>
               </div>
               <div className={styles.stars}>
-                {'★'.repeat(t.stars)}{'☆'.repeat(5 - t.stars)}
+                {[...Array(5)].map((_, i) => (
+                  <Star key={i} size={14} fill={i < t.stars ? "#ff0000" : "transparent"} color={i < t.stars ? "#ff0000" : "rgba(255,255,255,0.2)"} />
+                ))}
               </div>
               <p className={styles.quote}>"{t.quote}"</p>
-              <div className={styles.tag} style={{ color: t.color, background: `${t.color}15`, border: `1px solid ${t.color}30` }}>
+              <div className={styles.tag} style={{ color: t.color, borderColor: `${t.color}30`, background: `${t.color}10` }}>
                 {t.tag}
               </div>
-            </div>
+            </motion.div>
           ))}
         </div>
       </div>

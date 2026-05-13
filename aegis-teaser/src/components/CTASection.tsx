@@ -2,11 +2,14 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import styles from './CTASection.module.css'
+import { motion } from 'framer-motion'
+import { Mail, ArrowRight, ShieldCheck, Globe, Code2, Zap, Heart, Bot, CheckCircle2 } from 'lucide-react'
 
 export default function CTASection() {
   const [email, setEmail] = useState('')
   const [submitted, setSubmitted] = useState(false)
   const router = useRouter()
+  const titleWords = "Build More Secure, Ship More Confident.".split(" ")
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -20,14 +23,11 @@ export default function CTASection() {
 
   return (
     <section id="cta" className={styles.section}>
+      <div className={styles.dotBg} />
       <div className={styles.bgGlow} />
 
       <div className="container">
         <div className={styles.wrapper}>
-          {/* Decorative ring */}
-          <div className={styles.ringOuter} />
-          <div className={styles.ringInner} />
-
           <div className={styles.content}>
             <div className={styles.badge}>
               <span className={styles.badgeDot} />
@@ -35,16 +35,30 @@ export default function CTASection() {
             </div>
 
             <h2 className={styles.title}>
-              Build More Secure,<br />
-              <span className="gradient-text">Ship More Confident.</span>
+              {titleWords.map((word, i) => (
+                <motion.span
+                  key={i}
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  transition={{ 
+                    type: 'spring',
+                    stiffness: 70,
+                    damping: 20,
+                    delay: i * 0.2,
+                  }}
+                  viewport={{ once: true }}
+                  style={{ display: 'inline-block', marginRight: '0.25em' }}
+                >
+                  {word}
+                </motion.span>
+              ))}
             </h2>
 
             <p className={styles.desc}>
-              Jadilah yang pertama menggunakan AEGIS ketika kami meluncur. Dapatkan akses early, priority onboarding, 
-              dan harga spesial untuk supporter awal. Security masa depan dimulai hari ini.
+              Be among the first to experience AEGIS. Gain early access, priority onboarding, 
+              and exclusive founder-level status. The future of autonomous security starts here.
             </p>
 
-            {/* Stats */}
             <div className={styles.miniStats}>
               {[
                 { val: '500+', label: 'Waitlist' },
@@ -59,11 +73,16 @@ export default function CTASection() {
             </div>
 
             {!submitted ? (
-              <form onSubmit={handleSubmit} className={styles.form} id="cta-email-form">
+              <motion.form 
+                onSubmit={handleSubmit} 
+                className={styles.form}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5 }}
+                viewport={{ once: true }}
+              >
                 <div className={styles.inputWrap}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className={styles.inputIcon}>
-                    <path d="M3 8l9 6 9-6M5 5h14a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2z" stroke="rgba(248,113,113,0.6)" strokeWidth="1.5"/>
-                  </svg>
+                  <Mail className={styles.inputIcon} size={18} />
                   <input
                     id="cta-email-input"
                     type="email"
@@ -74,46 +93,52 @@ export default function CTASection() {
                     required
                   />
                 </div>
-                <button type="submit" className="btn-primary" id="cta-submit">
+                <button type="submit" className={styles.submitBtn}>
                   Try Now — It's Free
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                    <path d="M5 12h14M12 5l7 7-7 7" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
-                  </svg>
+                  <ArrowRight size={18} />
                 </button>
-              </form>
+              </motion.form>
             ) : (
-              <div className={styles.successMsg}>
-                <span className={styles.successIcon}>✅</span>
+              <motion.div 
+                className={styles.successMsg}
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+              >
+                <CheckCircle2 color="#ff0000" size={32} />
                 <div>
                   <div className={styles.successTitle}>You&apos;re on the list!</div>
-                  <div className={styles.successDesc}>Kami akan mengirimkan email ke <strong>{email}</strong> saat AEGIS siap.</div>
+                  <div className={styles.successDesc}>Redirecting to dashboard...</div>
                 </div>
-              </div>
+              </motion.div>
             )}
 
             <div className={styles.trust}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                <path d="M12 2L3 7v10l9 5 9-5V7L12 2z" stroke="rgba(248,113,113,0.5)" strokeWidth="1.5"/>
-              </svg>
+              <ShieldCheck size={14} color="#ff0000" />
               No spam. No credit card. Open-source first.
             </div>
           </div>
         </div>
 
-        {/* Bottom features strip */}
         <div className={styles.featureStrip}>
           {[
-            { icon: '🔓', text: 'Open Source' },
-            { icon: '🇮🇩', text: 'Made in Indonesia' },
-            { icon: '🤖', text: 'AI-Powered' },
-            { icon: '⚡', text: 'Real-time Analysis' },
-            { icon: '🛡️', text: 'UU PDP Compliant' },
-            { icon: '🌐', text: 'Multi-language Support' },
-          ].map((f) => (
-            <div key={f.text} className={styles.featureItem}>
-              <span>{f.icon}</span>
+            { Icon: Code2, text: 'Open Source' },
+            { Icon: Heart, text: 'Made in Indonesia' },
+            { Icon: Bot, text: 'AI-Powered' },
+            { Icon: Zap, text: 'Real-time Analysis' },
+            { Icon: ShieldCheck, text: 'UU PDP Compliant' },
+            { Icon: Globe, text: 'Global Reach' },
+          ].map((f, i) => (
+            <motion.div 
+              key={f.text} 
+              className={styles.featureItem}
+              initial={{ opacity: 0, y: 10 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.1 }}
+              viewport={{ once: true }}
+            >
+              <f.Icon size={16} color="#ff0000" />
               <span>{f.text}</span>
-            </div>
+            </motion.div>
           ))}
         </div>
       </div>
