@@ -22,10 +22,9 @@ export default function AskSection() {
             transition={{ delay: 0.1 }}
             viewport={{ once: true }}
           >
-            Your personal security expert, right in your codebase. 
-            Ask complex security questions and get personalized, 
-            context-aware answers based on your specific project 
-            architecture and vulnerabilities.
+            Pakar keamanan pribadi Anda, tepat di dalam codebase Anda. 
+            Ajukan pertanyaan keamanan yang kompleks dan dapatkan jawaban 
+            berbasis konteks yang disesuaikan dengan arsitektur proyek Anda.
           </motion.p>
         </div>
 

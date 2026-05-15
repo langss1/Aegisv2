@@ -1,12 +1,12 @@
 .section {
   position: relative;
   z-index: 2;
-  padding: 100px 0;
-  background: #030000;
+  padding: 80px 0 120px 0;
+  background: #000000;
   display: flex;
-  justify-content: center;
+  flex-direction: column;
   align-items: center;
-  min-height: 80vh;
+  min-height: 100vh;
 }
 
 .videoWrapper {

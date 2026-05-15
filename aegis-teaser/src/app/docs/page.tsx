@@ -1,154 +1,258 @@
 'use client'
-import { motion } from 'framer-motion'
-import Navbar from '@/components/Navbar'
-import Footer from '@/components/Footer'
+import { useState, useEffect } from 'react'
 import styles from './Docs.module.css'
-import { useState } from 'react'
-
-const sections = [
-  {
-    id: "help-system",
-    title: "The Help System",
-    cmd: "aegis help",
-    content: (
-      <>
-        <p>The help command is the entry point for understanding the Aegis ecosystem. It provides a real-time overview of available autonomous security operations, shell integrations, and AI configurations.</p>
-        <div className={styles.terminalBox}>
-          <pre>
-{`bantuan_sistem
-perintah utama:
-  scan        jalankan pemetaan struktur & arsitektur proyek
-  code        jalankan audit kode (SAST) & perbaikan AI
-  ...`}
-          </pre>
-        </div>
-      </>
-    )
-  },
-  {
-    id: "scan",
-    title: "Architecture Scan",
-    cmd: "aegis scan",
-    content: (
-      <>
-        <p>The scan command initiates Phase 0 of the Aegis pipeline. It performs a deep recursive traversal of the project directory to build a semantic map of the application.</p>
-        <ul>
-          <li><strong>Dependency Analysis:</strong> Parses <code>package.json</code> and manifest files.</li>
-          <li><strong>Architecture Report:</strong> Generates <code>AEGIS_INGESTION_REPORT.md</code>.</li>
-        </ul>
-      </>
-    )
-  },
-  {
-    id: "code",
-    title: "Security Audit (SAST)",
-    cmd: "aegis code",
-    content: (
-      <>
-        <p>This command executes Phase 1: searching for vulnerabilities in the source code and offering surgical AI repairs.</p>
-        <ul>
-          <li><strong>Vulnerability Probing:</strong> Scans for hardcoded secrets and SQL injection.</li>
-          <li><strong>Interactive Patching:</strong> Presents discovered issues with "Before & After" diffs.</li>
-        </ul>
-      </>
-    )
-  },
-  {
-    id: "monitor",
-    title: "Runtime Monitor",
-    cmd: "aegis monitor",
-    content: (
-      <>
-        <p>[COMING SOON] The monitor command will handle Phase 2 and 3 of the security lifecycle, analyzing the application in its running state.</p>
-      </>
-    )
-  },
-  {
-    id: "undo",
-    title: "State Recovery",
-    cmd: "aegis undo",
-    content: (
-      <>
-        <p>The undo command provides a failsafe mechanism, restoring the project to its original, pre-remediation state using <code>.bak</code> files.</p>
-      </>
-    )
-  },
-  {
-    id: "models",
-    title: "Intelligence Cores",
-    cmd: "aegis models",
-    content: (
-      <>
-        <p>Switch between different AI "brains" (Aegis Core, Ollama, Custom) depending on your privacy and performance needs.</p>
-      </>
-    )
-  },
-  {
-    id: "tanya",
-    title: "AI Assistant",
-    cmd: "aegis tanya <text>",
-    content: (
-      <>
-        <p>The tanya command allows you to communicate directly with the active AI core about project-specific security questions.</p>
-      </>
-    )
-  }
-]
+import Navbar from '@/components/Navbar'
+import { motion } from 'framer-motion'
+import { Book, Shield, Terminal, Zap, Code, Search, Cpu, Lock, Activity, Command } from 'lucide-react'
 
 export default function DocsPage() {
-  const [activeTab, setActiveTab] = useState("help-system")
+  const [activeSection, setActiveSection] = useState('introduction')
+
+  const scrollToSection = (id: string) => {
+    const element = document.getElementById(id)
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' })
+      setActiveSection(id)
+    }
+  }
+
+  // Handle active section based on scroll position
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            setActiveSection(entry.target.id)
+          }
+        })
+      },
+      { threshold: 0.5 }
+    )
+
+    const sections = document.querySelectorAll('section[id]')
+    sections.forEach((section) => observer.observe(section))
+
+    return () => {
+      sections.forEach((section) => observer.unobserve(section))
+    }
+  }, [])
+
+  const navGroups = [
+    {
+      title: "Documentation",
+      items: [
+        { name: "Introduction", id: "introduction" },
+        { name: "Quickstart", id: "quickstart" },
+        { name: "Architecture", id: "architecture" },
+      ]
+    },
+    {
+      title: "Capabilities",
+      items: [
+        { name: "Security Scan", id: "security-scan" },
+        { name: "AI Ask", id: "ai-ask" },
+        { name: "Autopilot", id: "autopilot" },
+        { name: "Threat Detection", id: "threat-detection" },
+      ]
+    },
+    {
+      title: "API Reference",
+      items: [
+        { name: "Authentication", id: "authentication" },
+        { name: "Endpoints", id: "endpoints" },
+        { name: "Examples", id: "examples" },
+      ]
+    },
+    {
+      title: "Support",
+      items: [
+        { name: "Status", id: "status" },
+        { name: "FAQ", id: "faq" },
+      ]
+    }
+  ]
 
   return (
-    <main className={styles.page}>
+    <main className={styles.main}>
       <Navbar />
       
       <div className={styles.container}>
+        {/* LEFT SIDEBAR */}
         <aside className={styles.sidebar}>
-          <div className={styles.sidebarHeader}>
-            <span className={styles.vTag}>v2.3.0</span>
-            <h3>CLI Guide</h3>
-          </div>
-          <nav className={styles.nav}>
-            {sections.map((s) => (
-              <button 
-                key={s.id}
-                className={`${styles.navLink} ${activeTab === s.id ? styles.active : ''}`}
-                onClick={() => {
-                  setActiveTab(s.id)
-                  document.getElementById(s.id)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-                }}
-              >
-                {s.title}
-              </button>
-            ))}
-          </nav>
+          {navGroups.map((group, gIdx) => (
+            <div key={gIdx} className={styles.sidebarSection}>
+              <h3 className={styles.sectionTitle}>{group.title}</h3>
+              <ul className={styles.navList}>
+                {group.items.map((item, iIdx) => (
+                  <li 
+                    key={iIdx} 
+                    className={`${styles.navItem} ${activeSection === item.id ? styles.active : ''}`}
+                    onClick={() => scrollToSection(item.id)}
+                  >
+                    {activeSection === item.id && (
+                      <motion.div 
+                        layoutId="activeSidebarIndicator"
+                        className={styles.activeIndicator}
+                        transition={{ type: "spring", stiffness: 350, damping: 30 }}
+                      />
+                    )}
+                    <span className={styles.navText}>{item.name}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
         </aside>
 
-        <div className={styles.content}>
-          <div className={styles.headerArea}>
-            <h1 className={styles.mainTitle}>Aegis CLI <span className={styles.red}>Documentation</span></h1>
-            <p className={styles.mainDesc}>The comprehensive technical guide for the Aegis Autonomous Security Engine.</p>
-          </div>
+        {/* MAIN CONTENT AREA */}
+        <article className={styles.content}>
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <span className={styles.breadcrumb}>Documentation / {activeSection.replace('-', ' ')}</span>
+            <h1 className={styles.title}>Aegis <span>Documentation</span></h1>
+            
+            <p className={styles.lead}>
+              The comprehensive technical guide for the Aegis Autonomous Security Engine. 
+              Dirancang untuk melindungi, menganalisis, dan memperbaiki kode Anda secara otomatis.
+            </p>
 
-          {sections.map((s) => (
-            <motion.section 
-              key={s.id} 
-              id={s.id}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-20% 0px -20% 0px" }}
-              onViewportEnter={() => setActiveTab(s.id)}
-              className={styles.section}
-            >
-              <h2 className={styles.sectionTitle}>{s.title}</h2>
-              <div className={styles.commandTag}>{s.cmd}</div>
-              <div className={styles.sectionBody}>{s.content}</div>
-            </motion.section>
-          ))}
-        </div>
+            <section id="introduction">
+              <h2>Introduction</h2>
+              <p>
+                AEGIS adalah ekosistem keamanan otonom tingkat profesional yang memanfaatkan model 
+                kecerdasan buatan tingkat lanjut (Gemini 1.5 Pro) untuk memberikan perlindungan real-time 
+                pada codebase Anda.
+              </p>
+              
+              <div className={styles.card}>
+                <h3><Zap size={20} className="text-red-600" /> Visi AEGIS</h3>
+                <p>
+                  Menciptakan lingkungan pengembangan yang aman tanpa hambatan, di mana AI bekerja sebagai 
+                  pakar keamanan yang selalu aktif memantau setiap baris kode Anda.
+                </p>
+              </div>
+            </section>
+
+            <section id="quickstart">
+              <h2>Quickstart</h2>
+              <p>
+                Mulailah dengan Aegis dalam hitungan detik. Pastikan Anda memiliki Node.js terinstal, 
+                lalu jalankan perintah inisialisasi di bawah ini untuk mengonfigurasi lingkungan keamanan Anda.
+              </p>
+              <div className={styles.codeBlock}>
+                <code>npm install @aegis-security/core</code>
+              </div>
+            </section>
+
+            <section id="architecture">
+              <h2>Architecture</h2>
+              <p>
+                AEGIS dirancang dengan arsitektur modular yang terdiri dari Scanner, Healer, dan CLI Interface. 
+                Semua komponen berkomunikasi secara aman melalui AI Engine pusat.
+              </p>
+            </section>
+
+            <section id="security-scan">
+              <h2>Security Scan</h2>
+              <p>
+                Fitur pemindaian keamanan AEGIS menganalisis kode Anda terhadap kerentanan OWASP Top 10 secara otomatis.
+              </p>
+            </section>
+
+            <section id="ai-ask">
+              <h2>AI Ask</h2>
+              <p>
+                Tanyakan pertanyaan tentang basis kode Anda langsung di terminal dan dapatkan jawaban berbasis konteks.
+              </p>
+            </section>
+
+            <section id="key-features">
+              <h2>Key Features</h2>
+              <p>
+                Sistem ini mengintegrasikan berbagai modul keamanan yang bekerja secara sinergis:
+              </p>
+              <ul>
+                <li><strong>AI-Driven Analysis:</strong> Analisis kerentanan mendalam berbasis konteks.</li>
+                <li><strong>Autonomous Fix:</strong> Penambalan otomatis untuk celah keamanan yang terdeteksi.</li>
+                <li><strong>Interactive CLI:</strong> Kontrol penuh sistem melalui antarmuka terminal yang intuitif.</li>
+              </ul>
+            </section>
+
+            <section id="the-help-system">
+              <h2>The Help System</h2>
+              <div className={styles.codeBlock}>
+                <code>aegis --help</code>
+              </div>
+              <p>
+                Gunakan perintah bantuan untuk melihat semua kemampuan sistem yang tersedia.
+              </p>
+            </section>
+
+            <section id="how-it-works">
+              <h2>Cara Kerja</h2>
+              <p>
+                Mulai amankan proyek Anda dengan perintah inisialisasi berikut:
+              </p>
+              <div className={styles.codeBlock}>
+                <pre><code>{`# Jalankan inisialisasi AEGIS
+node src/cli/main.js setup
+
+# Mulai tanya pakar keamanan
+node src/cli/main.js Ask`}</code></pre>
+              </div>
+            </section>
+
+            {/* Additional placeholder sections */}
+            <section id="autopilot"><h2>Autopilot</h2><p>Remediasi otomatis tanpa campur tangan manusia.</p></section>
+            <section id="threat-detection"><h2>Threat Detection</h2><p>Deteksi ancaman real-time pada lingkungan produksi.</p></section>
+            <section id="authentication"><h2>Authentication</h2><p>Panduan autentikasi API AEGIS.</p></section>
+            <section id="endpoints"><h2>Endpoints</h2><p>Daftar lengkap endpoint API yang tersedia.</p></section>
+            <section id="examples"><h2>Examples</h2><p>Contoh penggunaan di berbagai skenario.</p></section>
+            <section id="status"><h2>Status</h2><p>Status operasional sistem AEGIS.</p></section>
+            <section id="faq"><h2>FAQ</h2><p>Pertanyaan yang sering diajukan oleh pengguna.</p></section>
+
+          </motion.div>
+        </article>
+
+        {/* RIGHT TOC SIDEBAR */}
+        <aside className={styles.toc}>
+          <h4 className={styles.tocTitle}>On this page</h4>
+          <ul className={styles.tocList}>
+            {groupItemsForToc(activeSection).map((item, idx) => (
+              <li 
+                key={idx} 
+                className={`${styles.tocItem} ${activeSection === item.id ? styles.active : ''}`}
+                onClick={() => scrollToSection(item.id)}
+              >
+                {activeSection === item.id && (
+                  <motion.div 
+                    layoutId="activeTocIndicator"
+                    className={styles.tocIndicator}
+                    transition={{ type: "spring", stiffness: 350, damping: 30 }}
+                  />
+                )}
+                <span className={styles.tocText}>{item.name}</span>
+              </li>
+            ))}
+          </ul>
+        </aside>
+
       </div>
-
-      <Footer />
     </main>
   )
+}
+
+function groupItemsForToc(currentId: string) {
+  // Simplified TOC logic: show the main sections of the active group or all main sections
+  return [
+    { name: "Introduction", id: "introduction" },
+    { name: "Quickstart", id: "quickstart" },
+    { name: "Architecture", id: "architecture" },
+    { name: "Security Scan", id: "security-scan" },
+    { name: "AI Ask", id: "ai-ask" },
+    { name: "Cara Kerja", id: "how-it-works" },
+  ]
 }
