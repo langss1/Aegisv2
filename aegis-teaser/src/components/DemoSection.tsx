@@ -61,6 +61,8 @@ export default function DemoSection() {
 
   return (
     <section ref={sectionRef} id="demo" className={styles.section}>
+      <div className={styles.dotsBg}></div>
+      
       <div 
         className={styles.videoWrapper} 
         style={{ 
@@ -68,6 +70,7 @@ export default function DemoSection() {
             opacity: Math.min(scale * 1.5 - 0.5, 1)
         }}
       >
+        <div className={styles.scanline}></div>
         <div className={styles.videoContent}>
           <iframe 
             width="100%" 
@@ -77,111 +80,87 @@ export default function DemoSection() {
             frameBorder="0" 
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
             allowFullScreen
-            style={{ borderRadius: '12px', boxShadow: '0 20px 50px rgba(255, 0, 0, 0.3)' }}
+            style={{ filter: 'contrast(1.1) brightness(0.9) saturate(1.1)' }}
           ></iframe>
         </div>
       </div>
 
-      {/* --- PREMIUM GLASSMORPHISM LEVEL 2 SLIDER --- */}
-      <div className="relative min-h-screen w-full flex items-center justify-center overflow-hidden py-24 mt-10 font-sans">
-        
-        {/* --- BACKGROUND LAYER --- */}
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:50px_50px]"></div>
-        
-        {/* Animated Radial Glow */}
-        <motion.div 
-          animate={{ 
-            scale: [1, 1.2, 1],
-            opacity: [0.1, 0.15, 0.1] 
-          }}
-          transition={{ duration: 8, repeat: Infinity }}
-          style={{ backgroundColor: problems[current].color }}
-          className="absolute w-[600px] h-[600px] rounded-full blur-[120px] z-0"
-        />
-
-        <div className="relative z-10 w-full max-w-6xl px-8">
-          
-          {/* --- HEADER --- */}
-          <div className="mb-16">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="h-[2px] w-12 bg-red-600 shadow-[0_0_10px_rgba(220,38,38,0.8)]"></div>
-              <span className="text-xs font-bold tracking-[0.6em] text-gray-500 uppercase font-mono text-left">System Integrity Report</span>
-            </div>
-            <h2 className="text-6xl md:text-8xl font-black text-white tracking-tighter uppercase italic leading-none text-left">
-              Masalah <span className="text-red-600 drop-shadow-[0_0_20px_rgba(220,38,38,0.5)]">Utama</span>
-            </h2>
+      {/* --- PREMIUM CONTENT CARD --- */}
+      <div className={styles.cardContainer}>
+        <div className="mb-12">
+          <div className="flex items-center gap-4 mb-3">
+            <div className="h-[1px] w-16 bg-red-600"></div>
+            <span className="text-[10px] font-bold tracking-[0.8em] text-red-500/80 uppercase font-mono">
+              System Integrity Report
+            </span>
           </div>
+          <h2 className="text-5xl md:text-8xl font-black text-white tracking-tighter uppercase italic leading-tight">
+            Masalah <span className="text-red-600 drop-shadow-[0_0_15px_rgba(220,38,38,0.4)]">Utama</span>
+          </h2>
+        </div>
 
-          {/* --- MAIN CARD --- */}
-          <div className="relative">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={current}
-                initial={{ opacity: 0, scale: 0.95, filter: 'blur(10px)' }}
-                animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
-                exit={{ opacity: 0, scale: 1.05, filter: 'blur(10px)' }}
-                transition={{ duration: 0.8, ease: [0.19, 1, 0.22, 1] }}
-                className="relative w-full rounded-[40px] border border-white/10 bg-white/[0.02] backdrop-blur-3xl p-10 md:p-20 shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden"
-              >
-                {/* Corner Accent */}
-                <div className={`absolute top-0 right-0 h-24 w-24 border-t-4 border-r-4 rounded-tr-[40px] opacity-40 transition-colors duration-700 ${problems[current].border}`}></div>
-                
-                <div className="flex flex-col md:flex-row items-center gap-16">
-                  
-                  {/* Visual Section */}
-                  <div className="relative flex-shrink-0">
-                    {/* Watermark Number */}
-                    <div className="text-[12rem] font-black text-white/[0.03] font-mono absolute -top-24 -left-16 select-none">
-                      {problems[current].id}
-                    </div>
-                    {/* Icon Box */}
-                    <div className="relative p-10 bg-gradient-to-br from-white/10 to-transparent rounded-[32px] border border-white/10 shadow-2xl backdrop-blur-sm">
-                      {problems[current].icon}
-                      <div className="absolute inset-0 bg-white/5 animate-pulse rounded-[32px] pointer-events-none"></div>
-                    </div>
-                  </div>
-
-                  {/* Content Section */}
-                  <div className="flex-1 text-center md:text-left">
-                    <div className="inline-block px-4 py-1 rounded-full border border-white/10 bg-white/5 text-[10px] font-bold tracking-[0.3em] text-gray-400 mb-6 uppercase">
-                      {problems[current].label}
-                    </div>
-                    <h3 className="text-4xl md:text-6xl font-extrabold text-white mb-6 tracking-tight uppercase leading-tight">
-                      {problems[current].title}
-                    </h3>
-                    <p className="text-xl md:text-2xl text-gray-400 leading-relaxed font-light italic max-w-2xl border-l-4 border-red-600/30 pl-8">
-                      "{problems[current].desc}"
-                    </p>
+        <div className="relative">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={current}
+              initial={{ opacity: 0, y: 20, filter: 'blur(10px)' }}
+              animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+              exit={{ opacity: 0, y: -20, filter: 'blur(10px)' }}
+              transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+              className={styles.premiumCard}
+            >
+              <div className={styles.numberBg}>{problems[current].id}</div>
+              
+              <div className="flex flex-col md:flex-row items-center gap-12 md:gap-20">
+                <div className="relative flex-shrink-0">
+                  <div className={styles.iconBox}>
+                    {problems[current].icon}
+                    <div className="absolute inset-0 bg-red-500/5 animate-pulse rounded-2xl"></div>
                   </div>
                 </div>
-              </motion.div>
-            </AnimatePresence>
 
-            {/* --- BOTTOM CONTROLS --- */}
-            <div className="mt-12 flex items-center justify-between">
-              <div className="flex gap-4">
-                {problems.map((_, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setCurrent(i)}
-                    className={`group relative h-2 transition-all duration-700 rounded-full ${
-                      current === i ? "w-20 bg-red-600" : "w-8 bg-white/10 hover:bg-white/20"
-                    }`}
-                  >
-                    {current === i && (
-                      <motion.div 
-                        layoutId="activeBarGlow"
-                        className="absolute inset-0 bg-red-600 blur-sm"
-                      />
-                    )}
-                  </button>
-                ))}
+                <div className="flex-1 text-center md:text-left">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-md border border-white/5 bg-white/5 text-[9px] font-bold tracking-[0.4em] text-gray-500 mb-6 uppercase">
+                    <span className="w-1.5 h-1.5 rounded-full bg-red-600 animate-pulse"></span>
+                    {problems[current].label}
+                  </div>
+                  <h3 className="text-3xl md:text-6xl font-bold text-white mb-6 tracking-tight uppercase">
+                    {problems[current].title}
+                  </h3>
+                  <p className="text-lg md:text-2xl text-gray-400 leading-relaxed font-light italic border-l-2 border-red-600/20 pl-8 max-w-2xl">
+                    {problems[current].desc}
+                  </p>
+                </div>
               </div>
-              
-              <div className="hidden md:flex items-center gap-4 text-gray-600 font-mono text-sm tracking-widest uppercase">
-                <span className="text-white font-bold italic">SCNR-v.2.0</span>
-                <span className="h-4 w-[1px] bg-white/10"></span>
-                <span>Page {current + 1} / {problems.length}</span>
+            </motion.div>
+          </AnimatePresence>
+
+          {/* --- CONTROLS --- */}
+          <div className="mt-12 flex flex-col md:flex-row items-center justify-between gap-8">
+            <div className="flex gap-3">
+              {problems.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setCurrent(i)}
+                  className={`group relative h-1.5 transition-all duration-500 rounded-full ${
+                    current === i ? "w-16 bg-red-600" : "w-6 bg-white/10 hover:bg-white/20"
+                  }`}
+                >
+                  {current === i && (
+                    <motion.div 
+                      layoutId="activeBarGlow"
+                      className="absolute inset-0 bg-red-600 blur-[2px]"
+                    />
+                  )}
+                </button>
+              ))}
+            </div>
+            
+            <div className="flex items-center gap-6 text-[10px] font-mono tracking-[0.3em] text-gray-600 uppercase">
+              <div className="flex items-center">
+                <span className="text-red-600 font-bold tracking-widest">SCNR-v.2.0</span>
+                <span className="mx-4 h-3 w-[1px] bg-white/20"></span>
+                <span className="text-white">Page {current + 1} / {problems.length}</span>
               </div>
             </div>
           </div>

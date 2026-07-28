@@ -5,11 +5,12 @@ import styles from './page.module.css'
 import Navbar from '@/components/Navbar'
 import HeroSection from '@/components/HeroSection'
 import DemoSection from '@/components/DemoSection'
+import CrisisSection from '@/components/CrisisSection'
+import Phase3Preview from '@/components/Phase3Preview'
 import ForWhoSection from '@/components/ForWhoSection'
 import TestimonialsSection from '@/components/TestimonialsSection'
 import TeamSection from '@/components/TeamSection'
 import Footer from '@/components/Footer'
-import IconRibbonSection from '@/components/IconRibbonSection'
 import FeaturesSection from '@/components/FeaturesSection'
 import SecuritySection from '@/components/SecuritySection'
 import LocalPenTestSection from '@/components/LocalPenTestSection'
@@ -48,7 +49,8 @@ export default function Home() {
       {isRevealed && (
         <div className={styles.revealContainer}>
           <DemoSection />
-          <IconRibbonSection />
+          <CrisisSection />
+          <Phase3Preview />
           <FeaturesSection />
           <SecuritySection />
           <LocalPenTestSection />
